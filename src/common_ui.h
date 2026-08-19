@@ -16,9 +16,6 @@ struct UIRuntime {
     // 由 app 注入的回调；失败信息一律写入 err（英文）
     void (*extract_fn)(const std::string& host, const std::string& out_dir,
                        const std::string& pwd, std::string& err) = nullptr;
-    void (*embed_fn)(const std::string& host, const std::string& payload,
-                     const std::string& out_dir, const std::string& pwd,
-                     int cap_pct, int depth, std::string& err) = nullptr;
     void (*fake_convert_fn)(const std::string& in, const std::string& out_fmt,
                             const std::string& out_dir, std::string& err) = nullptr;
 
@@ -30,6 +27,7 @@ struct UIRuntime {
     std::string password;             // 内存中的"密码"（由隐藏窗确定按钮写入）
     int cap_pct = 15;                 // 嵌入填充率上限 %（隐藏窗"编码质量"映射，15/30/50/100）
     int depth = 1;                    // WAV 承载深度（隐藏窗音频"位深"映射，1/2/3；仅 audio 生效）
+    bool hw_accel = false;            // 「硬件加速」勾选（主界面）：勾选=加密嵌入，不勾选=解密提取
     std::vector<std::string> pending_drops; // WM_DROPFILES 收集的拖拽文件
     std::string status;               // 底部状态栏文本
     std::string modal_msg;            // 弹窗文案

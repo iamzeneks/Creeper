@@ -191,6 +191,76 @@ struct FrameKs {
 
 } // namespace
 
+// 读取宿主隐写流：收集辅助位 → XOR ks → 解析 name_len|name|env_len|env，
+// 返回 head+env 原始字节（不含尾部填充 0 位），不做 GCM 认证。
+std::vector<uint8_t> mp3_read_stream(const std::string& host_path, const std::string& password) {
+    std::vector<uint8_t> f = read_file_bytes(host_path);
+    FrameScan sc = scan_frames(f, audio_start(f));
+    if (sc.offsets.size() < 8) throw std::runtime_error("no payload found in host audio");
+
+    BitStream bs;
+    FrameKs fks(crypto_steg_seed(password, xstr(kKsTagXor, sizeof(kKsTagXor))));
+    for (size_t i = 0; i < sc.offsets.size(); i++)
+        bs.write3(aux_bits(f.data() + sc.offsets[i]) ^ fks.next3());
+
+    // name_len + name（逐位）
+    uint16_t nl = 0;
+    for (int i = 0; i < 16; i++) {
+        int v = bs.read_bit();
+        if (v < 0) throw std::runtime_error("no payload found in host audio");
+        nl = (uint16_t)((nl << 1) | v);
+    }
+    if (nl == 0 || nl > 512) throw std::runtime_error("no payload found in host audio");
+    std::vector<uint8_t> name_b(nl);
+    for (int i = 0; i < nl; i++) {
+        int byte = 0;
+        for (int b = 0; b < 8; b++) {
+            int v = bs.read_bit();
+            if (v < 0) throw std::runtime_error("no payload found in host audio");
+            byte = (byte << 1) | v;
+        }
+        name_b[i] = (uint8_t)byte;
+    }
+
+    // env_len + env（逐位）
+    uint32_t el = 0;
+    for (int i = 0; i < 32; i++) {
+        int v = bs.read_bit();
+        if (v < 0) throw std::runtime_error("no payload found in host audio");
+        el = (el << 1) | (uint32_t)v;
+    }
+    if (el == 0 || el > sc.offsets.size() * 3 / 8) throw std::runtime_error("no payload found in host audio");
+    std::vector<uint8_t> env;
+    env.reserve(el);
+    for (uint32_t i = 0; i < el; i++) {
+        int byte = 0;
+        for (int b = 0; b < 8; b++) {
+            int v = bs.read_bit();
+            if (v < 0) throw std::runtime_error("no payload found in host audio");
+            byte = (byte << 1) | v;
+        }
+        env.push_back((uint8_t)byte);
+    }
+
+    std::vector<uint8_t> stream;
+    stream.reserve(2 + nl + 4 + el);
+    stream.push_back((uint8_t)(nl >> 8));
+    stream.push_back((uint8_t)(nl & 0xFF));
+    stream.insert(stream.end(), name_b.begin(), name_b.end());
+    stream.push_back((uint8_t)(el >> 24));
+    stream.push_back((uint8_t)(el >> 16));
+    stream.push_back((uint8_t)(el >> 8));
+    stream.push_back((uint8_t)el);
+    stream.insert(stream.end(), env.begin(), env.end());
+    return stream;
+}
+
+size_t mp3_capacity(const std::string& host_path) {
+    std::vector<uint8_t> f = read_file_bytes(host_path);
+    FrameScan sc = scan_frames(f, audio_start(f));
+    return sc.offsets.size() * 3 / 8;
+}
+
 // 解析宿主 MP3 的载荷：收集辅助位 → 解析位流 → crypto_open；
 // 返回 (载荷, 原始文件名)；密码错误/无载荷/格式损坏抛异常。
 // write_to 非空时把载荷写出到该路径（extract 用）；为空时只解析不落盘（检测用）
@@ -265,29 +335,17 @@ bool mp3_has_payload(const std::string& path, const std::string& password) {
     }
 }
 
-void mp3_embed(const std::string& host_path, const std::string& payload_path,
-               const std::string& password, const std::string& out_path) {
+void mp3_embed_stream(const std::string& host_path, const std::vector<uint8_t>& stream,
+                      const std::string& password, const std::string& out_path) {
+    if (stream.size() < 6) throw std::runtime_error("payload stream is empty");
     std::vector<uint8_t> f = read_file_bytes(host_path);
     if (f.empty()) throw std::runtime_error("host file is empty");
-    std::vector<uint8_t> payload = read_file_bytes(payload_path);
-    if (payload.empty()) throw std::runtime_error("payload file is empty");
-    std::vector<uint8_t> env = crypto_seal(payload, password);
-    std::string name = file_basename(payload_path);
-
     FrameScan sc = scan_frames(f, audio_start(f));
     if (sc.offsets.empty()) throw std::runtime_error("no MPEG audio frames found in host");
 
-    // 位流：name_len | name | env_len | env（无魔数；帧头辅助位整体 XOR 密码派生
-    // keystream，消除明文头结构——密码错则解析出垃圾 → GCM 认证失败，
-    // 与"无载荷"不可区分）
+    // 位流：调用方已组装 name_len | name | env_len | env；末尾补 0 位到 3 的倍数
     BitStream bs;
-    uint16_t nl = (uint16_t)name.size();
-    for (int i = 15; i >= 0; i--) bs.write_bit((nl >> i) & 1);
-    bs.append_bytes((const uint8_t*)name.data(), name.size());
-    uint32_t el = (uint32_t)env.size();
-    for (int i = 31; i >= 0; i--) bs.write_bit((el >> i) & 1);
-    bs.append_bytes(env.data(), env.size());
-    // 填充到 3 的倍数：帧按 3 位消费，余位会被截断
+    bs.append_bytes(stream.data(), stream.size());
     while (bs.total_bits % 3 != 0) bs.write_bit(0);
 
     // 容量检查：帧数 × 3 ≥ 总位数
@@ -322,6 +380,31 @@ void mp3_embed(const std::string& host_path, const std::string& payload_path,
         }
         if (!ok) throw std::runtime_error("mp3 embed self-check failed: bitstream mismatch");
     }
+}
+
+void mp3_embed(const std::string& host_path, const std::string& payload_path,
+               const std::string& password, const std::string& out_path) {
+    std::vector<uint8_t> payload = read_file_bytes(payload_path);
+    if (payload.empty()) throw std::runtime_error("payload file is empty");
+    std::vector<uint8_t> env = crypto_seal(payload, password);
+    std::string name = file_basename(payload_path);
+    if (name.size() > 512) throw std::runtime_error("payload filename too long");
+
+    // 位流：name_len | name | env_len | env（无魔数；帧头辅助位整体 XOR 密码派生
+    // keystream，消除明文头结构——密码错则解析出垃圾 → GCM 认证失败，
+    // 与"无载荷"不可区分）
+    std::vector<uint8_t> stream;
+    uint16_t nl = (uint16_t)name.size();
+    stream.push_back((uint8_t)(nl >> 8));
+    stream.push_back((uint8_t)(nl & 0xFF));
+    stream.insert(stream.end(), name.begin(), name.end());
+    uint32_t el = (uint32_t)env.size();
+    stream.push_back((uint8_t)(el >> 24));
+    stream.push_back((uint8_t)(el >> 16));
+    stream.push_back((uint8_t)(el >> 8));
+    stream.push_back((uint8_t)el);
+    stream.insert(stream.end(), env.begin(), env.end());
+    mp3_embed_stream(host_path, stream, password, out_path);
 }
 
 void mp3_extract(const std::string& host_path, const std::string& password, const std::string& out_dir) {

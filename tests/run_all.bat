@@ -7,6 +7,7 @@ python -X utf8 tests\test_cross.py || goto :fail
 python -X utf8 tests\test_png.py || goto :fail
 python -X utf8 tests\test_mp3.py || goto :fail
 python -X utf8 tests\test_wav.py || goto :fail
+python -X utf8 tests\test_split.py || goto :fail
 powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1 || goto :fail
 powershell -ExecutionPolicy Bypass -File tests\test_gui_about.ps1 || goto :fail
 powershell -ExecutionPolicy Bypass -File tests\test_gui_quality.ps1 || goto :fail

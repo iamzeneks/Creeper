@@ -163,8 +163,7 @@ void write_cb(void* context, void* data, int size) {
 // 解析宿主 PNG 的载荷：密码派生 seed → 散布重放（头+体同一散布流）→ crypto_open；
 // 返回 (载荷, 原始文件名)；密码错误/无载荷/格式损坏抛异常。
 // write_to 非空时把载荷写出到该路径（extract 用）；为空时只解析不落盘（检测用）
-std::vector<uint8_t> png_parse(const std::string& host_path, const std::string& password,
-                               const std::string& write_to, std::string& out_name) {
+std::vector<uint8_t> png_read_stream(const std::string& host_path, const std::string& password) {
     int w = 0, h = 0, req = 0;
     unsigned char* img = load_image(host_path, w, h, req);
     try {
@@ -194,7 +193,6 @@ std::vector<uint8_t> png_parse(const std::string& host_path, const std::string& 
         uint16_t name_len = (uint16_t)(((uint16_t)nl_b[0] << 8) | nl_b[1]);
         if (name_len == 0 || name_len > 512) throw std::runtime_error("no payload found in host image");
         std::vector<uint8_t> name_b = read_bytes(name_len);
-        std::string name(name_b.begin(), name_b.end());
         std::vector<uint8_t> el_b = read_bytes(4);
         uint32_t env_len = ((uint32_t)el_b[0] << 24) | ((uint32_t)el_b[1] << 16) |
                            ((uint32_t)el_b[2] << 8) | (uint32_t)el_b[3];
@@ -202,20 +200,58 @@ std::vector<uint8_t> png_parse(const std::string& host_path, const std::string& 
             throw std::runtime_error("no payload found in host image");
         std::vector<uint8_t> env = read_bytes(env_len);
 
-        // 解信封（密码错误抛异常；GCM 认证 = 载荷真实性校验）
-        std::vector<uint8_t> payload = crypto_open(env, password);
-
-        // 文件名清洗：仅保留 basename，防路径穿越
-        out_name = file_basename(name);
-        if (out_name.empty() || out_name == "." || out_name == "..")
-            throw std::runtime_error("invalid payload filename");
-        if (!write_to.empty()) write_file_bytes(write_to, payload);
-        return payload;
+        // 拼回原样流（head+env）：调用方自行解析（分片合并按原样收集）
+        std::vector<uint8_t> stream;
+        stream.reserve(2 + name_len + 4 + env_len);
+        stream.insert(stream.end(), nl_b.begin(), nl_b.end());
+        stream.insert(stream.end(), name_b.begin(), name_b.end());
+        stream.insert(stream.end(), el_b.begin(), el_b.end());
+        stream.insert(stream.end(), env.begin(), env.end());
+        return stream;
     } catch (...) {
         stbi_image_free(img);
         throw;
     }
     stbi_image_free(img);
+}
+
+// head+env 拼接流 → 解信封认证；write_to 非空时落盘
+std::vector<uint8_t> png_parse_stream(const std::vector<uint8_t>& stream,
+                                      const std::string& password,
+                                      const std::string& write_to, std::string& out_name) {
+    if (stream.size() < 6) throw std::runtime_error("no payload found in host image");
+    uint16_t name_len = (uint16_t)(((uint16_t)stream[0] << 8) | stream[1]);
+    if (name_len == 0 || name_len > 512 || stream.size() < (size_t)6 + name_len)
+        throw std::runtime_error("no payload found in host image");
+    uint32_t env_len = ((uint32_t)stream[2 + name_len] << 24) | ((uint32_t)stream[3 + name_len] << 16) |
+                       ((uint32_t)stream[4 + name_len] << 8) | (uint32_t)stream[5 + name_len];
+    if (env_len == 0 || stream.size() != (size_t)6 + name_len + env_len)
+        throw std::runtime_error("no payload found in host image");
+    std::string name((const char*)stream.data() + 2, name_len);
+    std::vector<uint8_t> env(stream.begin() + 6 + name_len, stream.end());
+
+    // 解信封（密码错误抛异常；GCM 认证 = 载荷真实性校验）
+    std::vector<uint8_t> payload = crypto_open(env, password);
+
+    // 文件名清洗：仅保留 basename，防路径穿越
+    out_name = file_basename(name);
+    if (out_name.empty() || out_name == "." || out_name == "..")
+        throw std::runtime_error("invalid payload filename");
+    if (!write_to.empty()) write_file_bytes(write_to, payload);
+    return payload;
+}
+
+std::vector<uint8_t> png_parse(const std::string& host_path, const std::string& password,
+                               const std::string& write_to, std::string& out_name) {
+    std::vector<uint8_t> stream = png_read_stream(host_path, password);
+    return png_parse_stream(stream, password, write_to, out_name);
+}
+
+size_t png_capacity(const std::string& host_path) {
+    int w = 0, h = 0, req = 0;
+    unsigned char* img = load_image(host_path, w, h, req);
+    stbi_image_free(img);
+    return (size_t)w * h * 3 / 8;
 }
 
 bool png_has_payload(const std::string& path, const std::string& password) {
@@ -228,31 +264,14 @@ bool png_has_payload(const std::string& path, const std::string& password) {
     }
 }
 
-void png_embed(const std::string& host_path, const std::string& payload_path,
-               const std::string& password, const std::string& out_path, int fill_limit_pct) {
+void png_embed_stream(const std::string& host_path, const std::vector<uint8_t>& stream,
+                      const std::string& password, const std::string& out_path, int fill_limit_pct) {
     int w = 0, h = 0, req = 0;
     unsigned char* img = load_image(host_path, w, h, req);
     try {
         size_t total_bits = (size_t)w * h * 3;
-        std::vector<uint8_t> payload = read_file_bytes(payload_path);
-        if (payload.empty()) throw std::runtime_error("payload file is empty");
-        std::string name = file_basename(payload_path);
-        if (name.size() > 65535) throw std::runtime_error("payload filename too long");
-        std::vector<uint8_t> env = crypto_seal(payload, password);
-
-        // 组装位流（无魔数、无 seed 字段：头+体整体按密码派生种子散布）
-        std::vector<uint8_t> stream;
-        uint16_t nl = (uint16_t)name.size();
-        stream.push_back((uint8_t)(nl >> 8));
-        stream.push_back((uint8_t)(nl & 0xFF));
-        stream.insert(stream.end(), name.begin(), name.end());
-        uint32_t el = (uint32_t)env.size();
-        stream.push_back((uint8_t)(el >> 24));
-        stream.push_back((uint8_t)(el >> 16));
-        stream.push_back((uint8_t)(el >> 8));
-        stream.push_back((uint8_t)el);
-        stream.insert(stream.end(), env.begin(), env.end());
         size_t stream_bits = stream.size() * 8;
+        if (stream_bits == 0) throw std::runtime_error("payload stream is empty");
 
         // 容量检查：先按填充率上限（抗统计检测），再按绝对容量
         if (fill_limit_pct > 0 &&
@@ -354,6 +373,29 @@ void png_embed(const std::string& host_path, const std::string& payload_path,
         throw;
     }
     stbi_image_free(img);
+}
+
+void png_embed(const std::string& host_path, const std::string& payload_path,
+               const std::string& password, const std::string& out_path, int fill_limit_pct) {
+    std::vector<uint8_t> payload = read_file_bytes(payload_path);
+    if (payload.empty()) throw std::runtime_error("payload file is empty");
+    std::string name = file_basename(payload_path);
+    if (name.size() > 512) throw std::runtime_error("payload filename too long");
+    std::vector<uint8_t> env = crypto_seal(payload, password);
+
+    // 组装位流（无魔数、无 seed 字段：头+体整体按密码派生种子散布）
+    std::vector<uint8_t> stream;
+    uint16_t nl = (uint16_t)name.size();
+    stream.push_back((uint8_t)(nl >> 8));
+    stream.push_back((uint8_t)(nl & 0xFF));
+    stream.insert(stream.end(), name.begin(), name.end());
+    uint32_t el = (uint32_t)env.size();
+    stream.push_back((uint8_t)(el >> 24));
+    stream.push_back((uint8_t)(el >> 16));
+    stream.push_back((uint8_t)(el >> 8));
+    stream.push_back((uint8_t)el);
+    stream.insert(stream.end(), env.begin(), env.end());
+    png_embed_stream(host_path, stream, password, out_path, fill_limit_pct);
 }
 
 void png_extract(const std::string& host_path, const std::string& password, const std::string& out_dir) {

@@ -232,6 +232,56 @@ std::vector<uint8_t> try_parse(const std::vector<uint8_t>& f, const WavInfo& inf
 
 } // namespace
 
+// 读取宿主隐写流：新格式（首字节 = depth 1..3）原样返回 depth 首字节 + head+env；
+// 旧格式 v1.0（无 depth 字段）与无载荷统一抛异常（分片合并只认新格式）。
+std::vector<uint8_t> wav_read_stream(const std::string& host_path, const std::string& password) {
+    std::vector<uint8_t> f = read_file_bytes(host_path);
+    WavInfo info = parse_wav(f);
+    uint32_t seed = crypto_steg_seed(password, xstr(kSeedTagXor, sizeof(kSeedTagXor)));
+
+    for (int depth : {1, 2, 3}) {
+        try {
+            ScatterReader r(f, info, seed, depth);
+            size_t total_bits = info.sample_count * (size_t)depth;
+            if (total_bits < 64) throw std::runtime_error("no payload found in host wav");
+            uint8_t d0 = r.read_byte();
+            if (d0 != (uint8_t)depth) throw std::runtime_error("no payload found in host wav");
+            uint16_t name_len = (uint16_t)(((uint16_t)r.read_byte() << 8) | r.read_byte());
+            if (name_len == 0 || name_len > 512) throw std::runtime_error("no payload found in host wav");
+            std::vector<uint8_t> name_b(name_len);
+            for (size_t i = 0; i < name_len; i++) name_b[i] = r.read_byte();
+            uint32_t env_len = ((uint32_t)r.read_byte() << 24) | ((uint32_t)r.read_byte() << 16) |
+                               ((uint32_t)r.read_byte() << 8) | r.read_byte();
+            if (env_len == 0 || env_len > total_bits / 8)
+                throw std::runtime_error("no payload found in host wav");
+            std::vector<uint8_t> env(env_len);
+            for (size_t i = 0; i < env_len; i++) env[i] = r.read_byte();
+
+            std::vector<uint8_t> stream;
+            stream.reserve(1 + 2 + name_len + 4 + env_len);
+            stream.push_back(d0);
+            stream.push_back((uint8_t)(name_len >> 8));
+            stream.push_back((uint8_t)name_len);
+            stream.insert(stream.end(), name_b.begin(), name_b.end());
+            stream.push_back((uint8_t)(env_len >> 24));
+            stream.push_back((uint8_t)(env_len >> 16));
+            stream.push_back((uint8_t)(env_len >> 8));
+            stream.push_back((uint8_t)env_len);
+            stream.insert(stream.end(), env.begin(), env.end());
+            return stream;
+        } catch (const std::runtime_error&) {
+        }
+    }
+    throw std::runtime_error("no payload found in host wav");
+}
+
+size_t wav_capacity(const std::string& host_path, int depth) {
+    if (depth < 1 || depth > 3) throw std::runtime_error("invalid depth (need 1..3)");
+    std::vector<uint8_t> f = read_file_bytes(host_path);
+    WavInfo info = parse_wav(f);
+    return info.sample_count * (size_t)depth / 8;
+}
+
 // 解析宿主 WAV 的载荷：密码派生 seed → 散布重放（头+体同一散布流）→ crypto_open；
 // 返回 (载荷, 原始文件名)；密码错误/无载荷/格式损坏抛异常。
 // write_to 非空时把载荷写出到该路径（extract 用）；为空时只解析不落盘（检测用）
@@ -290,37 +340,19 @@ bool wav_has_payload(const std::string& path, const std::string& password) {
     }
 }
 
-void wav_embed(const std::string& host_path, const std::string& payload_path,
-               const std::string& password, const std::string& out_path, int fill_limit_pct,
-               int depth) {
+void wav_embed_stream(const std::string& host_path, const std::vector<uint8_t>& stream,
+                      const std::string& password, const std::string& out_path, int fill_limit_pct,
+                      int depth) {
     if (depth < 1 || depth > 3) throw std::runtime_error("invalid depth (need 1..3)");
+    if (stream.empty() || stream[0] != (uint8_t)depth)
+        throw std::runtime_error("invalid wav stream (depth header mismatch)");
     std::vector<uint8_t> f = read_file_bytes(host_path);
     if (f.empty()) throw std::runtime_error("host file is empty");
-    std::vector<uint8_t> payload = read_file_bytes(payload_path);
-    if (payload.empty()) throw std::runtime_error("payload file is empty");
     WavInfo info = parse_wav(f);
     if (depth > 1 && info.bits != 16)
         throw std::runtime_error("depth > 1 requires 16-bit wav");
 
-    std::vector<uint8_t> env = crypto_seal(payload, password);
-    std::string name = file_basename(payload_path);
-    if (name.size() > 512) throw std::runtime_error("payload filename too long");
-
-    // 位流（无魔数、无 seed 字段：头+体整体按密码派生种子散布）
-    std::vector<uint8_t> stream;
-    stream.push_back((uint8_t)depth);
-    uint16_t nl = (uint16_t)name.size();
-    stream.push_back((uint8_t)(nl >> 8));
-    stream.push_back((uint8_t)nl);
-    stream.insert(stream.end(), name.begin(), name.end());
-    uint32_t el = (uint32_t)env.size();
-    stream.push_back((uint8_t)(el >> 24));
-    stream.push_back((uint8_t)(el >> 16));
-    stream.push_back((uint8_t)(el >> 8));
-    stream.push_back((uint8_t)el);
-    stream.insert(stream.end(), env.begin(), env.end());
     size_t stream_bits = stream.size() * 8;
-
     size_t total_bits = info.sample_count * (size_t)depth;
 
     // 容量检查：先按填充率上限（抗统计检测），再按绝对容量
@@ -334,7 +366,7 @@ void wav_embed(const std::string& host_path, const std::string& payload_path,
     // 散布种子由密码派生：无明文 seed 字段，位置随密码变化
     uint32_t seed = crypto_steg_seed(password, xstr(kSeedTagXor, sizeof(kSeedTagXor)));
 
-    // 单遍嵌入：散布写位（depth=1 随机 ±1；depth=2 低 2 bit 重写）
+    // 单遍嵌入：散布写位（depth=1 随机 ±1；depth=2/3 低 k bit 重写）
     std::vector<uint8_t> used(info.sample_count, 0);
     XorShift64 rng(seed);
     for (size_t i = 0; i < stream_bits;) {
@@ -368,6 +400,33 @@ void wav_embed(const std::string& host_path, const std::string& payload_path,
     }
 
     write_file_bytes(out_path, f);
+}
+
+void wav_embed(const std::string& host_path, const std::string& payload_path,
+               const std::string& password, const std::string& out_path, int fill_limit_pct,
+               int depth) {
+    if (depth < 1 || depth > 3) throw std::runtime_error("invalid depth (need 1..3)");
+    std::vector<uint8_t> payload = read_file_bytes(payload_path);
+    if (payload.empty()) throw std::runtime_error("payload file is empty");
+
+    std::vector<uint8_t> env = crypto_seal(payload, password);
+    std::string name = file_basename(payload_path);
+    if (name.size() > 512) throw std::runtime_error("payload filename too long");
+
+    // 位流（无魔数、无 seed 字段：头+体整体按密码派生种子散布）
+    std::vector<uint8_t> stream;
+    stream.push_back((uint8_t)depth);
+    uint16_t nl = (uint16_t)name.size();
+    stream.push_back((uint8_t)(nl >> 8));
+    stream.push_back((uint8_t)nl);
+    stream.insert(stream.end(), name.begin(), name.end());
+    uint32_t el = (uint32_t)env.size();
+    stream.push_back((uint8_t)(el >> 24));
+    stream.push_back((uint8_t)(el >> 16));
+    stream.push_back((uint8_t)(el >> 8));
+    stream.push_back((uint8_t)el);
+    stream.insert(stream.end(), env.begin(), env.end());
+    wav_embed_stream(host_path, stream, password, out_path, fill_limit_pct, depth);
 }
 
 void wav_extract(const std::string& host_path, const std::string& password, const std::string& out_dir) {

@@ -51,16 +51,6 @@ void audio_extract(const std::string& host, const std::string& out_dir, const st
         else mp3_extract(host, pwd, out_dir);
     } catch (const std::exception& e) { err = e.what(); }
 }
-void audio_embed(const std::string& host, const std::string& payload, const std::string& out_dir,
-                 const std::string& pwd, int cap_pct, int depth, std::string& err) {
-    try {
-        std::string ext = (host_ext(host) == ".wav") ? "wav" : "mp3";
-        std::string out_path = out_dir.empty() ? strip_ext(host) + "_已转换." + ext
-                                               : out_dir + "/" + strip_ext(host) + "_已转换." + ext;
-        if (ext == "wav") wav_embed(host, payload, pwd, out_path, cap_pct, depth);
-        else mp3_embed(host, payload, pwd, out_path);
-    } catch (const std::exception& e) { err = e.what(); }
-}
 
 } // namespace
 
@@ -85,7 +75,6 @@ int main(int argc, char** argv) {
     rt.is_image = false;
     rt.formats = {"MP3", "WAV"};
     rt.extract_fn = audio_extract;
-    rt.embed_fn = audio_embed;
     rt.fake_convert_fn = audio_fake_convert;
     return ui_run(rt);
 }

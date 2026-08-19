@@ -5,13 +5,18 @@
 //   creeper_cli embed <host> <payload> <out> <password> [--cap N] [--depth N]
 //   creeper_cli extract <host> <outdir> <password>
 //   creeper_cli has <host> <password>  # 输出 1/0（无魔数：需密码验证载荷真实性）
+//   creeper_cli split <payload> <password> <outdir> <host...> [--cap N] [--depth N]
+//   creeper_cli unsplit <outdir> <password> <host...>
 // --cap N：PNG/WAV 填充率上限（百分比，默认 15，0=不限制）；MP3 忽略。
 // --depth N：仅 WAV，每样本承载位数（1 默认 / 2 / 3 高容量，>1 仅 16-bit 宿主；非 WAV 报错）。
+// split：大文件拆分到多宿主（列表最后一个不参与——所有 host 都是宿主，载荷单独指定）。
+// unsplit：多宿主合并还原（宿主顺序无关，按块内编号拼接）。
 // 成功退出码 0；任何失败向 stderr 输出英文错误信息并返回非 0。
 #include "crypto.h"
 #include "file_util.h"
 #include "mp3_steg.h"
 #include "png_steg.h"
+#include "split_steg.h"
 #include "wav_steg.h"
 
 #include <windows.h>
@@ -46,7 +51,9 @@ void usage() {
         "  creeper_cli open <env> <out> <password>\n"
         "  creeper_cli embed <host> <payload> <out> <password> [--cap N]\n"
         "  creeper_cli extract <host> <outdir> <password>\n"
-        "  creeper_cli has <host> <password>\n");
+        "  creeper_cli has <host> <password>\n"
+        "  creeper_cli split <payload> <password> <outdir> <host...> [--cap N] [--depth N]\n"
+        "  creeper_cli unsplit <outdir> <password> <host...>\n");
 }
 
 // 解析 "--cap N" / "--depth N"（cap 返回 -1 表示未指定；非法/未知参数抛异常）
@@ -131,6 +138,34 @@ int main() {
             else if (has_ext(args[2], ".mp3")) r = mp3_has_payload(args[2], args[3]) ? 1 : 0;
             else throw std::runtime_error("unsupported host file type (need .png, .wav or .mp3)");
             printf("%d\n", r);
+            return 0;
+        }
+        if (cmd == "split" && argc >= 6) {
+            depth_opt = 1;
+            int cap = -1;
+            std::vector<std::string> hosts;
+            for (int i = 5; i < argc; i++) {
+                if (args[i] == "--cap" && i + 1 < argc) {
+                    int v = std::atoi(args[i + 1].c_str());
+                    if (v < 0 || v > 100) throw std::runtime_error("invalid --cap value (0..100)");
+                    cap = v;
+                    i++;
+                } else if (args[i] == "--depth" && i + 1 < argc) {
+                    int v = std::atoi(args[i + 1].c_str());
+                    if (v < 1 || v > 3) throw std::runtime_error("invalid --depth value (1..3)");
+                    depth_opt = v;
+                    i++;
+                } else {
+                    hosts.push_back(args[i]);
+                }
+            }
+            if (hosts.empty()) throw std::runtime_error("no host files given");
+            split_embed(args[2], args[3], hosts, args[4], cap >= 0 ? cap : 15, depth_opt);
+            return 0;
+        }
+        if (cmd == "unsplit" && argc >= 5) {
+            std::vector<std::string> hosts(args.begin() + 4, args.end());
+            split_extract(hosts, args[3], args[2]);
             return 0;
         }
         usage();

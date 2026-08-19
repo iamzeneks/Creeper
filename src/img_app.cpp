@@ -64,15 +64,6 @@ void img_fake_convert(const std::string& in, const std::string& out_fmt, const s
 void img_extract(const std::string& host, const std::string& out_dir, const std::string& pwd, std::string& err) {
     try { png_extract(host, pwd, out_dir); } catch (const std::exception& e) { err = e.what(); }
 }
-void img_embed(const std::string& host, const std::string& payload, const std::string& out_dir,
-               const std::string& pwd, int cap_pct, int depth, std::string& err) {
-    (void)depth; // PNG 无承载深度概念（仅 WAV --depth 生效）
-    try {
-        std::string out_path = out_dir.empty() ? strip_ext(host) + "_已转换.png"
-                                               : out_dir + "/" + strip_ext(host) + "_已转换.png";
-        png_embed(host, payload, pwd, out_path, cap_pct);
-    } catch (const std::exception& e) { err = e.what(); }
-}
 
 } // namespace
 
@@ -97,7 +88,6 @@ int main(int argc, char** argv) {
     rt.is_image = true;
     rt.formats = {"JPG", "PNG"};
     rt.extract_fn = img_extract;
-    rt.embed_fn = img_embed;
     rt.fake_convert_fn = img_fake_convert;
     return ui_run(rt);
 }

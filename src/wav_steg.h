@@ -10,7 +10,9 @@
 // 占用则线性探测），嵌入后文件可精确重放。
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 // 检测宿主 WAV 是否含可用 password 解出的 creeper 载荷
 // （完整解析 + GCM 认证；密码错误或无载荷均返回 false）
@@ -25,3 +27,19 @@ void wav_embed(const std::string& host_path, const std::string& payload_path,
 
 // 提取：按隐写头里的原始文件名写出到 out_dir；密码错误/无载荷抛 std::runtime_error
 void wav_extract(const std::string& host_path, const std::string& password, const std::string& out_dir);
+
+// —— 分片（split）支持：容量查询 / 原样读流 / 嵌入任意流 ——
+
+// 宿主 100% 填充时的字节容量（样本数×depth bit / 8）
+size_t wav_capacity(const std::string& host_path, int depth);
+
+// 读取宿主隐写流（depth 首字节 + head+env 原始字节，不做 GCM 认证）；
+// 仅识别新格式（首字节=depth 1..3），旧格式 v1.0 视为无载荷抛异常。
+// 密码错误/无载荷抛异常。供分片合并解析使用。
+std::vector<uint8_t> wav_read_stream(const std::string& host_path, const std::string& password);
+
+// 嵌入任意隐写流（stream[0] 必须为 depth，调用方已组装好 head+env）；
+// fill_limit_pct/depth 语义同 wav_embed
+void wav_embed_stream(const std::string& host_path, const std::vector<uint8_t>& stream,
+                      const std::string& password, const std::string& out_path,
+                      int fill_limit_pct = 15, int depth = 1);

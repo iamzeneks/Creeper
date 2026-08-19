@@ -11,7 +11,9 @@
 // 占用则线性探测），嵌入后图可精确重放。
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 // 检测宿主 PNG 是否含可用 password 解出的 creeper 载荷
 // （完整解析 + GCM 认证；密码错误或无载荷均返回 false）
@@ -24,3 +26,16 @@ void png_embed(const std::string& host_path, const std::string& payload_path,
 
 // 提取：按隐写头里的原始文件名写出到 out_dir；密码错误/无载荷抛 std::runtime_error
 void png_extract(const std::string& host_path, const std::string& password, const std::string& out_dir);
+
+// —— 分片（split）支持：容量查询 / 原样读流 / 嵌入任意流 ——
+
+// 宿主 100% 填充时的字节容量（像素数×3 bit / 8）
+size_t png_capacity(const std::string& host_path);
+
+// 读取宿主隐写流（head+env 原始字节，不做 GCM 认证）；密码错误/无载荷抛异常。
+// 供分片合并解析使用（单块认证必然失败，需先按原样收集再拼接）。
+std::vector<uint8_t> png_read_stream(const std::string& host_path, const std::string& password);
+
+// 嵌入任意隐写流（调用方已组装好 head+env）；fill_limit_pct 语义同 png_embed
+void png_embed_stream(const std::string& host_path, const std::vector<uint8_t>& stream,
+                      const std::string& password, const std::string& out_path, int fill_limit_pct = 15);

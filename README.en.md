@@ -77,13 +77,20 @@ creeper_cli extract output.png out-dir your-password
 
 :: detect (1=present, 0=absent)
 creeper_cli has output.png your-password
+
+:: split a large file across multiple carriers (sealed first, then sharded;
+:: a single shard alone is undecryptable)
+creeper_cli split big.bin your-password out-dir carrier1.png carrier2.wav carrier3.mp3
+
+:: reassemble from multiple carriers (order-independent, joined by shard id)
+creeper_cli unsplit out-dir your-password carrier3.mp3 carrier1.png carrier2.wav
 ```
 
 Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3` (WAV embedding depth, up to 3× capacity).
 
 ## GUI (Disguised Mode)
 
-`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`). Single-file mode: with a password, extraction is attempted, silently falling back to fake conversion on failure; dual-file mode embeds. The hidden window also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth 1/2/3).
+`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`). Single-file mode: with a password, extraction is attempted, silently falling back to fake conversion on failure; without a password, fake conversion. Multi-file mode (2+) is dispatched by the "hardware acceleration" checkbox: **checked = embed** (last file is the payload, the rest are carriers, auto-sharded across them; use the "move up/down" buttons to put the payload last), **unchecked = extract** (all files are carriers, joined out of order); without a password multi-file always fakes a batch conversion (reveals nothing). The hidden window also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth 1/2/3).
 
 ## Layout
 

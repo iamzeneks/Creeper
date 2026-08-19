@@ -4,6 +4,7 @@
 #include "common_ui.h"
 
 #include "file_util.h"
+#include "split_steg.h"
 
 #include <windows.h>
 #include <d3d11.h>
@@ -407,6 +408,25 @@ static void remove_selected(UIRuntime& rt) {
     rt.files = std::move(keep);
     rt.selected = std::move(keep_sel);
 }
+// 上移/下移选中项（多选时整组移动，保持相对顺序）
+static void move_selected(UIRuntime& rt, bool up) {
+    if (rt.files.size() < 2) return;
+    if (up) {
+        for (size_t i = 1; i < rt.files.size(); i++) {
+            if (rt.selected[i] && !rt.selected[i - 1]) {
+                std::swap(rt.files[i], rt.files[i - 1]);
+                std::swap(rt.selected[i], rt.selected[i - 1]);
+            }
+        }
+    } else {
+        for (size_t i = rt.files.size() - 1; i > 0; i--) {
+            if (rt.selected[i - 1] && !rt.selected[i]) {
+                std::swap(rt.files[i], rt.files[i - 1]);
+                std::swap(rt.selected[i], rt.selected[i - 1]);
+            }
+        }
+    }
+}
 static bool ui_pick_folder(std::string& out) {
     BROWSEINFOW bi = {};
     bi.hwndOwner = g_hwnd;
@@ -426,12 +446,15 @@ static bool ui_pick_folder(std::string& out) {
 static void start_conversion(UIRuntime& rt) {
     if (g_busy) return;
     if (rt.files.empty()) { rt.modal_msg = "请先添加要转换的文件"; rt.modal = true; return; }
-    if (rt.files.size() > 2) { rt.modal_msg = "一次只能选择一个或两个文件"; rt.modal = true; return; }
-    // 只有双文件（加密嵌入）必须预填密码；单文件有密码时尝试提取、失败静默回退伪转换，
-    // 无密码直接伪转换——不做任何"有无载荷"预检（无魔数，也不暴露任何隐写信息）
-    if (rt.files.size() == 2 && rt.password.empty()) {
-        rt.modal_msg = "转换失败：请先编辑文件信息";
-        rt.modal = true;
+    // 单文件：有密码时尝试提取、失败静默回退伪转换，无密码直接伪转换——
+    // 不做任何"有无载荷"预检（无魔数，也不暴露任何隐写信息）。
+    // 多文件（2+）：有密码时——勾选「硬件加速」= 加密嵌入（列表最后一个文件=载荷，
+    // 其余=宿主，分片嵌入）；不勾选 = 解密提取（全部=宿主，按块内编号拼接还原）。
+    // 无密码时多文件一律假装批量转换（不暴露任何隐写信息）。
+    if (rt.files.size() >= 2 && rt.password.empty()) {
+        // 伪转换器话术：多文件批量转换（无隐写动作，仅假装完成）
+        rt.status = "转换完成";
+        rt.progress = 1.0f;
         return;
     }
     // 捕获副本，工作线程不读 UI 对象
@@ -440,10 +463,10 @@ static void start_conversion(UIRuntime& rt) {
     std::string fmt = rt.formats[rt.fmt_idx];
     std::string odir = rt.out_dir.empty() ? "." : rt.out_dir;
     auto extract_fn = rt.extract_fn;
-    auto embed_fn = rt.embed_fn;
     auto fake_fn = rt.fake_convert_fn;
     int cap_pct = rt.cap_pct;
     int depth = rt.depth;
+    bool hw_accel = rt.hw_accel;
 
     rt.status = "转换中…";
     rt.progress = 0.0f;
@@ -470,9 +493,15 @@ static void start_conversion(UIRuntime& rt) {
                 } else {
                     fake_fn(files[0], fmt, odir, err);
                 }
-            } else if (files.size() == 2) {
+            } else if (hw_accel) {
+                // 加密嵌入：最后一个文件 = 载荷，其余 = 宿主（分片嵌入，单宿主亦可）
                 g_progress = 0.3f;
-                embed_fn(files[0], files[1], odir, password, cap_pct, depth, err);
+                std::vector<std::string> hosts(files.begin(), files.end() - 1);
+                split_embed(files.back(), password, hosts, odir, cap_pct, depth);
+            } else {
+                // 解密提取：全部 = 宿主（顺序无关，按块内编号拼接还原）
+                g_progress = 0.3f;
+                split_extract(files, password, odir);
             }
             if (err.empty()) ok = true;
             g_progress = 1.0f;
@@ -530,7 +559,15 @@ static void draw_main_window(UIRuntime& rt) {
     ImGui::SameLine();
     if (ImGui::Button("移除选中")) remove_selected(rt);
     ImGui::SameLine();
+    if (ImGui::Button("上移")) move_selected(rt, true);
+    ImGui::SameLine();
+    if (ImGui::Button("下移")) move_selected(rt, false);
+    ImGui::SameLine();
     if (ImGui::Button("清空列表")) { rt.files.clear(); rt.selected.clear(); }
+    ImGui::SameLine();
+    // 「硬件加速」= 加密/解密模式开关（勾选 = 加密嵌入：最后一个文件为合并目标，
+    // 其余为宿主；不勾选 = 解密提取）。无密码时勾选无效（仍假装批量转换）。
+    ImGui::Checkbox("硬件加速", &rt.hw_accel);
     ImGui::SameLine();
     ImGui::TextDisabled("%zu 个文件", rt.files.size());
     ImGui::Separator();

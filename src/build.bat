@@ -9,17 +9,17 @@ set IMGUI_SRC=..\third_party\imgui\imgui.cpp ..\third_party\imgui\imgui_draw.cpp
 
 echo === building creeper_img.exe ===
 g++ -O2 -std=c++17 -DUNICODE -D_UNICODE %WARN% -mwindows -I.. -I..\third_party\imgui -I..\third_party\imgui\backends -I..\third_party ^
-  img_app.cpp common_ui.cpp crypto.cpp png_steg.cpp mp3_steg.cpp wav_steg.cpp %IMGUI_SRC% -o ..\res\creeper_img.exe %LIBS%
+  img_app.cpp common_ui.cpp crypto.cpp png_steg.cpp mp3_steg.cpp wav_steg.cpp split_steg.cpp %IMGUI_SRC% -o ..\res\creeper_img.exe %LIBS%
 if errorlevel 1 goto :err
 
 echo === building creeper_audio.exe ===
 g++ -O2 -std=c++17 -DUNICODE -D_UNICODE %WARN% -mwindows -I.. -I..\third_party\imgui -I..\third_party\imgui\backends -I..\third_party ^
-  audio_app.cpp common_ui.cpp crypto.cpp png_steg.cpp mp3_steg.cpp wav_steg.cpp %IMGUI_SRC% -o ..\res\creeper_audio.exe %LIBS%
+  audio_app.cpp common_ui.cpp crypto.cpp png_steg.cpp mp3_steg.cpp wav_steg.cpp split_steg.cpp %IMGUI_SRC% -o ..\res\creeper_audio.exe %LIBS%
 if errorlevel 1 goto :err
 
 echo === building creeper_cli.exe ===
 g++ -O2 -std=c++17 -DUNICODE -D_UNICODE %WARN% -I.. -I..\third_party\imgui -I..\third_party\imgui\backends -I..\third_party ^
-  cli_main.cpp crypto.cpp png_steg.cpp mp3_steg.cpp wav_steg.cpp -o ..\res\creeper_cli.exe %LIBS%
+  cli_main.cpp crypto.cpp png_steg.cpp mp3_steg.cpp wav_steg.cpp split_steg.cpp -o ..\res\creeper_cli.exe %LIBS%
 if errorlevel 1 goto :err
 
 echo.
