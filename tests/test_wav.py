@@ -248,11 +248,49 @@ def main():
             rc != 0 and "16-bit" in se and not os.path.exists(T.tmp("w_8bit_d2.wav")),
             "rc=%d %s" % (rc, se.strip()))
     # --depth 非法值 / 非 WAV 宿主
-    rc, _, se = T.run(["embed", T.WAV, p8, T.tmp("w_d3.wav"), PW, "--depth", "3"])
-    T.check("--depth 3 → 拒绝", rc != 0 and "depth" in se.lower(), "rc=%d %s" % (rc, se.strip()))
+    rc, _, se = T.run(["embed", T.WAV, p8, T.tmp("w_d4.wav"), PW, "--depth", "4"])
+    T.check("--depth 4 → 拒绝", rc != 0 and "depth" in se.lower(), "rc=%d %s" % (rc, se.strip()))
     rc, _, se = T.run(["embed", T.IMG, p8, T.tmp("w_dpng.png"), PW, "--depth", "2"])
     T.check("--depth 对 PNG 宿主 → 拒绝", rc != 0 and "wav" in se.lower()
             and not os.path.exists(T.tmp("w_dpng.png")), "rc=%d %s" % (rc, se.strip()))
+
+    # W19: 3-bit 高容量（--depth 3）：往返 + 无损 + 容量 2.5×1bit 基准
+    steg_3b = T.tmp("w_3bit_steg.wav")
+    rc, _, se = T.run(["embed", T.WAV, payload, steg_3b, PW, "--depth", "3"])
+    T.check("WAV 3bit 往返: embed 成功", rc == 0 and os.path.exists(steg_3b), "rc=%d %s" % (rc, se.strip()))
+    rc, so, _ = T.run(["has", steg_3b, PW])
+    T.check("WAV 3bit 往返: has==1（解析自适应深度）", rc == 0 and so.strip() == "1", "out=%r" % so.strip())
+    out3 = T.tmp("w_3bit_out")
+    rc, _, _ = T.run(["extract", steg_3b, out3, PW])
+    T.check("WAV 3bit 往返: extract 字节一致", rc == 0
+            and T.sha256(payload) == T.sha256(os.path.join(out3, os.path.basename(payload))), "rc=%d" % rc)
+    o = open(T.WAV, "rb").read()
+    st = open(steg_3b, "rb").read()
+    T.check("WAV 3bit 无损: 文件大小不变", len(o) == len(st))
+    T.check("WAV 3bit 无损: 头区零改动", o[:44] == st[:44])
+    mx3, cnt3 = sample_max_diff(T.WAV, steg_3b)
+    T.check("WAV 3bit 无损: 样本最大绝对差 ≤ 7（低 3 bit 重写）", mx3 <= 7, "max=%d 修改样本=%d" % (mx3, cnt3))
+    big3 = T.tmp("w_3bit_big.bin")
+    T.make_random(big3, int(CAP_BYTES * 2.5))
+    s3b = T.tmp("w_3bit_big_steg.wav")
+    rc, _, se = T.run(["embed", T.WAV, big3, s3b, PW, "--cap", "100", "--depth", "3"])
+    T.check("WAV 3bit 容量: 2.5×1bit 容量 embed 成功（容量 ×3）", rc == 0 and os.path.exists(s3b),
+            "rc=%d %s" % (rc, se.strip()))
+    rc, so, _ = T.run(["has", s3b, PW])
+    T.check("WAV 3bit 容量: has==1", rc == 0 and so.strip() == "1", "out=%r" % so.strip())
+    out3b = T.tmp("w_3bit_big_out")
+    rc, _, _ = T.run(["extract", s3b, out3b, PW])
+    T.check("WAV 3bit 容量: extract 字节一致", rc == 0
+            and T.sha256(big3) == T.sha256(os.path.join(out3b, os.path.basename(big3))), "rc=%d" % rc)
+    over3 = T.tmp("w_3bit_over.bin")
+    T.make_random(over3, CAP_BYTES * 3 * CAP_PCT // 100 + 1024)
+    rc, _, se = T.run(["embed", T.WAV, over3, T.tmp("w_3bit_over_steg.wav"), PW, "--depth", "3"])
+    T.check("WAV 3bit 填充率上限: 超 15%（3×基准）→ 报错且无输出",
+            rc != 0 and not os.path.exists(T.tmp("w_3bit_over_steg.wav")), "rc=%d stderr=%s" % (rc, se.strip()))
+    rc, _, se = T.run(["embed", w8, p8, T.tmp("w_8bit_d3.wav"), PW, "--depth", "3"])
+    T.check("8-bit WAV + --depth 3 → 拒绝（16-bit 提示）",
+            rc != 0 and "16-bit" in se and not os.path.exists(T.tmp("w_8bit_d3.wav")),
+            "rc=%d %s" % (rc, se.strip()))
 
     # W18: v1.0 旧格式（无 depth 字段）兼容回退——Python 复刻旧散布器构造旧文件，新 CLI 必须能解
     import hmac

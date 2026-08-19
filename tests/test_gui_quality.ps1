@@ -12,6 +12,9 @@ public class W32Q2 {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder sb, int n);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, UIntPtr e);
     [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
     public struct RECT { public int L, T, R, B; }
 }
@@ -51,6 +54,14 @@ try {
     if (-not $main) { Write-Output "FAIL: main window not found"; $fail = $true }
     if (-not $fail) {
         [void][W32Q2]::SetForegroundWindow($main.H)
+        [void][W32Q2]::SetWindowPos($main.H, [IntPtr](-1), 0, 0, 0, 0, 0x0001 -bor 0x0002)
+        Start-Sleep -Milliseconds 300
+        # Activate via a click on the window center (bypasses foreground lock)
+        $mr = New-Object W32Q2+RECT
+        [void][W32Q2]::GetWindowRect($main.H, [ref]$mr)
+        [void][W32Q2]::SetCursorPos([int](($mr.L + $mr.R) / 2), [int](($mr.T + $mr.B) / 2))
+        [void][W32Q2]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+        [void][W32Q2]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
         Start-Sleep -Milliseconds 500
         [void][W32Q2]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
         [void][W32Q2]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)

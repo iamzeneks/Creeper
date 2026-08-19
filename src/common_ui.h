@@ -29,7 +29,7 @@ struct UIRuntime {
     std::string out_dir;              // 输出目录
     std::string password;             // 内存中的"密码"（由隐藏窗确定按钮写入）
     int cap_pct = 15;                 // 嵌入填充率上限 %（隐藏窗"编码质量"映射，15/30/50/100）
-    int depth = 1;                    // WAV 承载深度（隐藏窗音频"位深"映射，1/2；仅 audio 生效）
+    int depth = 1;                    // WAV 承载深度（隐藏窗音频"位深"映射，1/2/3；仅 audio 生效）
     std::vector<std::string> pending_drops; // WM_DROPFILES 收集的拖拽文件
     std::string status;               // 底部状态栏文本
     std::string modal_msg;            // 弹窗文案

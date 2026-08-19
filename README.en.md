@@ -9,7 +9,7 @@
 - **End-to-end encryption**: AES-256-GCM + PBKDF2-HMAC-SHA256 (600,000 iterations); payload presence is decided by GCM authentication, false-positive rate 2⁻¹²⁸
 - **Three carriers, zero damage to media data**:
   - PNG: ±1 on RGB channels (LSB matching) + histogram pairing compensation + self-adversarial re-embedding
-  - WAV: lossless rewrite of the low 1–2 bits of PCM samples (configurable depth, 2× capacity)
+  - WAV: lossless rewrite of the low 1–3 bits of PCM samples (configurable depth, up to 3× capacity)
   - MP3: 3 auxiliary bits per MPEG frame header; audio data and ID3 regions untouched byte-for-byte
 - **No magic bytes**: headers carry no fixed signature; the scatter seed is derived from the password; presence = GCM authentication — a wrong password and no payload are indistinguishable
 - **Anti-statistical-detection**: default 15% fill-rate cap (overridable with `--cap`)
@@ -34,6 +34,7 @@
 | PNG (2560×1600) | 1 bit per RGB channel, ±1 | ≈ 1.46 MB | ≈ 230 KB |
 | WAV (44.1kHz stereo, per minute) | low 1 bit | ≈ 661 KB | ≈ 99 KB |
 | WAV `--depth 2` | low 2 bits | ≈ 1.3 MB | ≈ 198 KB |
+| WAV `--depth 3` | low 3 bits | ≈ 1.98 MB | ≈ 297 KB |
 | MP3 (19,194 frames) | 3 header auxiliary bits/frame | ≈ 7.2 KB | — |
 
 ## Build
@@ -78,11 +79,11 @@ creeper_cli extract output.png out-dir your-password
 creeper_cli has output.png your-password
 ```
 
-Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2` (WAV embedding depth, 2× capacity).
+Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3` (WAV embedding depth, up to 3× capacity).
 
 ## GUI (Disguised Mode)
 
-`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`). Single-file mode: with a password, extraction is attempted, silently falling back to fake conversion on failure; dual-file mode embeds. The hidden window also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth).
+`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`). Single-file mode: with a password, extraction is attempted, silently falling back to fake conversion on failure; dual-file mode embeds. The hidden window also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth 1/2/3).
 
 ## Layout
 

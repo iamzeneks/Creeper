@@ -6,7 +6,7 @@
 //   creeper_cli extract <host> <outdir> <password>
 //   creeper_cli has <host> <password>  # 输出 1/0（无魔数：需密码验证载荷真实性）
 // --cap N：PNG/WAV 填充率上限（百分比，默认 15，0=不限制）；MP3 忽略。
-// --depth N：仅 WAV，每样本承载位数（1 默认 / 2 高容量，仅 16-bit 宿主；非 WAV 报错）。
+// --depth N：仅 WAV，每样本承载位数（1 默认 / 2 / 3 高容量，>1 仅 16-bit 宿主；非 WAV 报错）。
 // 成功退出码 0；任何失败向 stderr 输出英文错误信息并返回非 0。
 #include "crypto.h"
 #include "file_util.h"
@@ -26,7 +26,7 @@
 
 namespace {
 
-int depth_opt = 1; // --depth：仅 WAV（1 默认 / 2 高容量）
+int depth_opt = 1; // --depth：仅 WAV（1 默认 / 2 / 3 高容量）
 
 std::string lower(const std::string& s) {
     std::string r = s;
@@ -60,7 +60,7 @@ int parse_cap(int argc, const std::vector<std::string>& args, int base) {
             i++;
         } else if (args[i] == "--depth" && i + 1 < argc) {
             int v = std::atoi(args[i + 1].c_str());
-            if (v != 1 && v != 2) throw std::runtime_error("invalid --depth value (1 or 2)");
+            if (v < 1 || v > 3) throw std::runtime_error("invalid --depth value (1..3)");
             depth_opt = v;
             i++;
         } else {

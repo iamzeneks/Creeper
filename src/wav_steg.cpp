@@ -169,20 +169,27 @@ struct ScatterReader {
         int v = read_sample(f.data() + info.data_off + s * ((size_t)info.bits / 8), info.bits);
         return (uint8_t)(v & ((1 << k) - 1));
     }
-    // 读 1 字节（字节内 MSB 优先，与嵌入侧 get_bit 位序一致）
+    // 读 1 字节（字节内 MSB 优先，与嵌入侧 get_bit 位序一致）。
+    // 逐位消费：样本切换按 next_pos 推进；depth 位内 LSB 优先（流位 → (样本, 样本内位)）。
+    // depth=3 时字节边界与样本边界不对齐（3 样本=9 位>8），必须跨样本缓冲剩余位。
+    size_t cur_pos = SIZE_MAX;
+    int cur_consumed = 0;
+    uint8_t cur_v = 0;
+
+    uint8_t next_bit() {
+        if (cur_pos == SIZE_MAX || cur_consumed == depth) {
+            cur_pos = next_pos();
+            cur_consumed = 0;
+            cur_v = (uint8_t)read_sample(
+                f.data() + info.data_off + cur_pos * ((size_t)info.bits / 8), info.bits);
+        }
+        return (uint8_t)((cur_v >> cur_consumed++) & 1);
+    }
+
     uint8_t read_byte() {
-        if (depth == 1) {
-            uint8_t b = 0;
-            for (int i = 0; i < 8; i++)
-                if (read_bits(1)) b |= (uint8_t)(1u << (7 - i));
-            return b;
-        }
         uint8_t b = 0;
-        for (int i = 0; i < 4; i++) {
-            uint8_t v = read_bits(2);
-            b |= (uint8_t)((v & 1) << (7 - 2 * i));
-            b |= (uint8_t)(((v >> 1) & 1) << (6 - 2 * i));
-        }
+        for (int i = 0; i < 8; i++)
+            if (next_bit()) b |= (uint8_t)(1u << (7 - i));
         return b;
     }
 };
@@ -237,7 +244,7 @@ std::vector<uint8_t> wav_parse(const std::string& host_path, const std::string& 
 
     // 新格式优先（首字节 = 承载深度 1/2）；GCM 认证失败后回退旧格式（无 depth 字段，深度=1）
     std::string parse_name;
-    for (int depth : {1, 2}) {
+    for (int depth : {1, 2, 3}) {
         try {
             std::vector<uint8_t> payload = try_parse(f, info, password, seed, depth,
                                                      write_to, parse_name);
@@ -286,14 +293,14 @@ bool wav_has_payload(const std::string& path, const std::string& password) {
 void wav_embed(const std::string& host_path, const std::string& payload_path,
                const std::string& password, const std::string& out_path, int fill_limit_pct,
                int depth) {
-    if (depth != 1 && depth != 2) throw std::runtime_error("invalid depth (need 1 or 2)");
+    if (depth < 1 || depth > 3) throw std::runtime_error("invalid depth (need 1..3)");
     std::vector<uint8_t> f = read_file_bytes(host_path);
     if (f.empty()) throw std::runtime_error("host file is empty");
     std::vector<uint8_t> payload = read_file_bytes(payload_path);
     if (payload.empty()) throw std::runtime_error("payload file is empty");
     WavInfo info = parse_wav(f);
-    if (depth == 2 && info.bits != 16)
-        throw std::runtime_error("depth 2 requires 16-bit wav");
+    if (depth > 1 && info.bits != 16)
+        throw std::runtime_error("depth > 1 requires 16-bit wav");
 
     std::vector<uint8_t> env = crypto_seal(payload, password);
     std::string name = file_basename(payload_path);
@@ -341,7 +348,7 @@ void wav_embed(const std::string& host_path, const std::string& payload_path,
         } else {
             uint8_t val = 0;
             int k = 0;
-            for (; k < 2 && i < stream_bits; k++, i++)
+            for (; k < depth && i < stream_bits; k++, i++)
                 if (get_bit(stream.data(), i)) val |= (uint8_t)(1u << k);
             set_sample_lowbits(f.data() + info.data_off, info.bits, pos, k, val);
         }

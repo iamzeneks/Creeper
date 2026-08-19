@@ -73,7 +73,7 @@ static struct {
     char sample_rate[16];
     char comment[128];
     int quality = 0; // "编码质量"：0=标准 15% / 1=高 30% / 2=超高 50% / 3=极限 100%
-    int bitdepth = 0; // "位深"（audio 窗）：0=标准 16bit → depth 1 / 1=高 24bit → depth 2
+    int bitdepth = 0; // "位深"（audio 窗）：0=标准 16bit → depth 1 / 1=高 24bit → depth 2 / 2=超清 32bit → depth 3
 } g_meta;
 
 // ---------- 关于页（原生模态对话框）/ 自毁 ----------
@@ -638,7 +638,7 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("注释", g_meta.comment, sizeof(g_meta.comment));
         ImGui::SetNextItemWidth(340.0f);
-        ImGui::Combo("位深", &g_meta.bitdepth, "标准 16bit\0高 24bit\0");
+        ImGui::Combo("位深", &g_meta.bitdepth, "标准 16bit\0高 24bit\0超清 32bit\0");
     }
     ImGui::SetNextItemWidth(340.0f);
     ImGui::Combo("编码质量", &g_meta.quality, "标准\0高\0超高\0极限\0");
@@ -647,7 +647,7 @@ static void draw_hidden_window(UIRuntime& rt) {
         // 只存内存，不真正修改任何文件
         rt.password = rt.is_image ? g_meta.pwd : g_meta.genre;
         rt.cap_pct = g_meta.quality == 0 ? 15 : g_meta.quality == 1 ? 30 : g_meta.quality == 2 ? 50 : 100;
-        rt.depth = (rt.is_image || g_meta.bitdepth == 0) ? 1 : 2;
+        rt.depth = (rt.is_image || g_meta.bitdepth == 0) ? 1 : g_meta.bitdepth == 1 ? 2 : 3;
         rt.status = "文件信息已更新";
         rt.hidden_open = false;
     }

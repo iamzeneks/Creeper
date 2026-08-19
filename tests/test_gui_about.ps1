@@ -16,6 +16,7 @@ public class W32G {
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, UIntPtr e);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
     public struct RECT { public int L, T, R, B; }
     public struct POINT { public int X, Y; }
@@ -63,6 +64,7 @@ try {
     }
 
     [void][W32G]::SetForegroundWindow($hwnd)
+    [void][W32G]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0001 -bor 0x0002)
     Start-Sleep -Milliseconds 400
     [void][W32G]::SetCursorPos($bx, $by)
     Start-Sleep -Milliseconds 400
