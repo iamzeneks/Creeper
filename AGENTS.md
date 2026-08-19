@@ -20,7 +20,7 @@ Windows 上的 C++17 隐写套件：把文件加密后藏进 PNG / MP3 / WAV。�
 ## 硬约束
 
 - **禁止修改 `third_party/stb/` 和 `third_party/imgui/`，禁止引入新依赖**（只许系统库 + 现有第三方）。
-- 项目是 git 仓库（BSD 3-Clause）；`res/`（发布包：exe + 说明书 md 副本）与 `.zip` / `Creeper便携版/`（分发目录）都是交付物（已被 .gitignore 排除，不进版本库），别删别乱动，exe 变更后需同步便携版；文档交付物 = `docs/` 下的 markdown 源（`使用说明书.md` / `技术报告.md`），不产出 PDF。
+- 项目是 git 仓库（BSD 3-Clause）；`res/`（发布包：3 个 exe + 说明书 md 副本）是交付物（已被 .gitignore 排除，不进版本库），别删别乱动，exe 变更后需同步 res/ 与便携版（便携版 zip 已废弃不打包）；文档交付物 = `docs/` 下的 markdown 源（`使用说明书.md` / `技术报告.md`），不产出 PDF。
 
 ## 文件格式（改任何一处必须保持与参考实现字节级兼容）
 
