@@ -273,7 +273,7 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 - **实现**（`wav_steg.h/cpp` 新建，`build.bat` / `cli_main.cpp` / `audio_app.cpp` 集成）：
   - 解析：RIFF/WAVE 逐 chunk；`fmt ` 校验 format=1（PCM）、位深 8/16（其他报错）；`data` 区 = 嵌入区；样本 = data 区顺序（多通道交错，小端）
   - 嵌入：每样本 1 bit LSB，**±1（LSB matching）**（8-bit 边界 0/255、16-bit 边界 ±32768 单方向）；RIFF/fmt 区与样本高 7 bit 逐字节零改动
-  - 位流与散布：与 PNG 完全同构——头 = `name_len(2B BE) + name + env_len(4B BE)`（无魔数、无 seed 字段），seed = `crypto_steg_seed(password, "creeper-wav")`，头+体整体 xorshift64 散布（纯内容无关序列）；存在性 = GCM 认证；**填充率上限默认 15%**（`--cap` 覆盖，与 PNG 同款报错）；写盘前重放逐位自检
+  - 位流与散布：与 PNG 完全同构——头 = `name_len(2B BE) + name + env_len(4B BE)`（无魔数、无 seed 字段），seed = `crypto_steg_seed(password, "creeper-uaz")`，头+体整体 xorshift64 散布（纯内容无关序列）；存在性 = GCM 认证；**填充率上限默认 15%**（`--cap` 覆盖，与 PNG 同款报错）；写盘前重放逐位自检
   - CLI：embed/extract/has 按扩展名分发 `.wav`；GUI：audio 侧宿主后缀 `.wav` → wav_steg（embed 输出名 `_已转换.wav`），提取同样按后缀分发
 - **实测**（`test.wav` 44.1kHz/16bit/stereo 60s，样本 529.2 万）：
   - 理论容量 = 样本数/8 = **661,500 B**；15% 上限 = 99,225 B
@@ -385,5 +385,5 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
   - **2 文件一律嵌入**：分派条件 `hw_accel || files.size()==2` → 2 文件（有密码）进入 split_embed（1 宿主+1 载荷），勾选框不再影响；3+ 文件仍由勾选分派（勾选=嵌入 / 不勾选=提取）；无密码仍一律假装批量转换
   - **密码字段假数据**：fill_presets 给「镜头格式」填"RAW"、「流派」填"流行"（与其它预制数据同款可信度）；新增 `pwd_touched`/`genre_touched` 编辑回调（`ImGuiInputTextFlags_CallbackEdit`）跟踪是否被用户改动——**未编辑过点确定一律视为空密码**（假数据绝不当真密码用）；「恢复默认」重置 touched；对外界面不暴露
   - **嵌入前容量预检**：新增 `crypto_payload_size`（= DEFLATE 压缩后 + 41B 信封头的精确字节数，无需派生密钥）与 `split_capacity_report`（与 split_embed 同一 `compute_avail` 公式，杜绝两处漂移）；start_conversion 在启动工作线程前**同步**预检，`have < need` 时直接弹窗「转换失败：文件过大，超出当前输出质量档位可容纳的大小（载荷约 X，档位最多约 Y）。请调高「编码质量」或分拆文件后重试。」并 return——不写任何宿主文件
-  - **移除 ICP 备案号**：关于弹窗删除"京ICP备2026051828号-1"（保留伪公司名/版权/免责文案），AGENTS/PROMPT_ENCODER/TEST_REPORT 同步删除引用
+  - **移除 ICP 备案号**：关于弹窗删除 ICP 备案号（保留伪公司名/版权/免责文案），AGENTS/PROMPT_ENCODER/TEST_REPORT 同步删除引用
 - **验证**：全量回归 **166/166**（行为变更不改加密/隐写/往返语义，分片/整理重建后 GUI 三套件全过）；容量预检与 split_embed 判定同源（`crypto_payload_size` ≡ `crypto_seal` 产物字节数，`compute_avail` 共用），由 S7 超容量 CLI 用例覆盖同源公式
