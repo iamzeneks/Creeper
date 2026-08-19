@@ -153,11 +153,10 @@
 | `../tests/test_gui.ps1` | F GUI 冒烟（ASCII 消息，避免 PS 5.1 编码问题） |
 | `../tests/test_gui_about.ps1` | F2 GUI 关于弹窗真实点击链路（DPI-aware 注入，副本 exe） |
 | `../tests/test_gui_quality.ps1` | F2 GUI 隐藏窗「编码质量」OCR 验证（Ctrl+Shift+F + Windows OCR） |
-| `../tests/run_all.bat` | 一键串行全量回归（含全部 8 个套件） |
+| `../tests/run_all.bat` | 一键串行全量回归（含全部 9 个套件） |
 | `../tests/tester.py` | 测试公共工具（路径/CLI 封装/断言/tmp 管理；ROOT 已相对化，仓库可移动） |
 | `../tests/envelope.py` | Python 侧加密信封参考实现（本地副本，C++ ↔ Python 互解基准） |
 | `../tests/gen_wav.py` | 合成 `test.wav` 宿主（44.1kHz/16bit/stereo 60s，确定性） |
-| `../tests/gen_pdf.py` | `使用说明书.md`/`技术报告.md` → PDF（Word COM 渲染 HTML），自动杀 WINWORD |
 | `../tests/results/` | 各套件运行的原始日志 |
 
 **复跑方法**（注意：各套件需顺序执行，勿并发——它们共用并会清空 `../tests/tmp/`）：
@@ -329,7 +328,7 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 - **../tests/envelope.py**（3325B）：Python 信封参考实现本地化副本；`test_cross.py` 优先加载本地，缺失时回退外部权威路径（`C:\Users\Zeneks\.openclaw\workspace\creeper\envelope.py`），9/9 通过
 - **../tests/gen_wav.py**：确定性合成 `test.wav` 宿主（44.1kHz/16bit/stereo 60s 纯正弦）；`test_wav.py` W0 在宿主缺失时自动生成
 - **test_wav.py 扩充（26 → 31）**：W9 新增 8-bit PCM 往返（无损：头区零改动 + 样本差 ≤ 1；载荷按 10% 容量取值，15% 会因信封头开销超限）与 float（WAVE_FORMAT_IEEE_FLOAT）拒绝（`unsupported wav format (need PCM)`，rc=1）
-- **../tests/gen_pdf.py**：重建（初版误删于 ../tests/tmp）；md（`使用说明书.md`/`技术报告.md`）→ 简易 HTML（标题/表格/列表/粗体）→ Word COM `ExportAsFixedFormat(17)` → PDF；PDF 被占用先杀 WINWORD；根目录旧版 `技术报告.pdf`（265,407B，8/18 凌晨遗留）已删除
+- **../tests/gen_pdf.py**：重建（初版误删于 ../tests/tmp）；md（`使用说明书.md`/`技术报告.md`）→ 简易 HTML（标题/表格/列表/粗体）→ Word COM `ExportAsFixedFormat(17)` → PDF；PDF 被占用先杀 WINWORD；根目录旧版 `技术报告.pdf`（265,407B，8/18 凌晨遗留）已删除（**2026-08-20 废弃**：文档交付物统一改回 markdown，`gen_pdf.py` 与 `res/`、便携版内的 PDF 一并删除，源文档以 `docs/` 下 md 为准）
 
 ### GUI 关于按钮真实鼠标点击验证（补做）
 

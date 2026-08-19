@@ -45,12 +45,12 @@
 src\build.bat
 ```
 
-产出三个可执行文件到 `res/`（发布包，与说明书 PDF 一起）：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。第三方依赖 `imgui/`、`stb/` 已随仓库置于 `third_party/`。
+产出三个可执行文件到 `res/`（发布包，与说明书 md 副本一起）：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。第三方依赖 `imgui/`、`stb/` 已随仓库置于 `third_party/`。
 
 ## 测试
 
 ```bat
-tests\run_all.bat        :: 一键全量回归（8 套件，任一失败退出非 0）
+tests\run_all.bat        :: 一键全量回归（9 套件，任一失败退出非 0）
 python tests\test_crypto.py   :: 加密往返 + 健壮性
 python tests\test_png.py      :: PNG 隐写往返
 python tests\test_mp3.py      :: MP3 隐写往返
@@ -98,7 +98,7 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 │  └─ build.bat       构建脚本（w64devkit g++，输出 exe 到 res/）
 ├─ third_party/       imgui / stb（开源第三方，勿修改）
 ├─ docs/              规格任务书、测试报告、产品文档（md 源）
-├─ res/               发布包（gitignore：exe + PDF 说明书）
+├─ res/               发布包（gitignore：exe + 说明书 md 副本）
 ├─ assets/            测试宿主（gitignore；tests/gen_hosts.py 生成）
 ├─ tests/             测试套件（Python / PowerShell）
 ├─ .github/           GitHub Actions CI（构建 + 非 GUI 套件）
