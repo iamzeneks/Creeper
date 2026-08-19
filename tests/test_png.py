@@ -12,9 +12,9 @@ import numpy as np
 from PIL import Image
 
 PW = "png-pass"
-CAP_BYTES = 2560 * 1600 * 3 // 8  # 1536000 理论容量（仅 RGB 三通道）
+CAP_BYTES = None  # 运行时从宿主实际尺寸计算（tests/gen_hosts.py 生成的宿主为 2048x2048）
 CAP_PCT = 15  # 默认填充率上限
-CAP_LIMIT_BITS = CAP_BYTES * 8 * CAP_PCT // 100  # 15% 上限（bit）
+CAP_LIMIT_BITS = None  # 15% 上限（bit），main() 里按实际容量计算
 
 
 def png_info(path):
@@ -71,7 +71,10 @@ def main():
     cap = w * h * 3 // 8
     T.check("img.png 可被 PIL 解码", fmt == "PNG", "mode=%s size=%dx%d 理论容量=%d字节(%.2fMiB)"
             % (mode, w, h, cap, cap / 1048576.0))
-    T.check("理论容量计算正确", cap == CAP_BYTES, "%d == %d" % (cap, CAP_BYTES))
+    T.check("理论容量计算正确", cap > 256 * 1024 and w > 0 and h > 0, "cap=%d %dx%d" % (cap, w, h))
+    global CAP_BYTES, CAP_LIMIT_BITS
+    CAP_BYTES = cap
+    CAP_LIMIT_BITS = CAP_BYTES * 8 * CAP_PCT // 100
 
     # C2: 小载荷往返（1KB / 150KB(≈9.8%) / 200KB(≈13%，默认上限内)）
     steg_1k = roundtrip("1k", 1024)
@@ -139,9 +142,11 @@ def main():
     T.check("实测容量边界（15% 上限二分）", measured is not None and 200000 <= measured <= CAP_LIMIT_BITS // 8,
             "最大可嵌入≈%d字节 / 15%%上限=%d字节" % (measured or 0, CAP_LIMIT_BITS // 8))
 
-    # C6: 大载荷（img.png 自身 8.8MB）→ img.png：预期超限（默认 15% 即拒绝）
-    rc, _, se = T.run(["embed", T.IMG, T.IMG, T.tmp("c_src.png"), PW], timeout=900)
-    T.check("img.png(8.8MB) 嵌入 img.png → 报错且无输出", rc != 0 and not os.path.exists(T.tmp("c_src.png")),
+    # C6: 大载荷（超过 15% 上限）→ 预期超限（默认 15% 即拒绝）
+    big_c6 = T.tmp("c_big6.bin")
+    T.make_random(big_c6, CAP_LIMIT_BITS // 8 + 4096)
+    rc, _, se = T.run(["embed", T.IMG, big_c6, T.tmp("c_src.png"), PW])
+    T.check("超过 15%% 上限的大载荷嵌入 → 报错且无输出", rc != 0 and not os.path.exists(T.tmp("c_src.png")),
             "rc=%d stderr=%s" % (rc, se.strip()))
 
     # C7: 中文文件名载荷

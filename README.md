@@ -41,10 +41,10 @@
 需要 [w64devkit](https://github.com/skeeto/w64devkit)（`g++` 在 PATH）：
 
 ```bat
-build.bat
+src\build.bat
 ```
 
-产出三个可执行文件：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。
+产出三个可执行文件到仓库根：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。第三方依赖 `imgui/`、`stb/` 已随仓库置于 `third_party/`。
 
 ## 测试
 
@@ -57,7 +57,7 @@ python tests\test_wav.py      :: WAV 隐写往返（含 v1.0 旧格式兼容）
 python tests\test_cross.py    :: C++ ↔ Python 信封互解（关键）
 ```
 
-测试依赖 Python 3 + Pillow + numpy + cryptography。WAV 宿主缺失时自动生成；PNG/MP3 宿主（`img.png` / `msc.mp3`）请自行准备任意文件。
+测试依赖 Python 3 + Pillow + numpy + cryptography。二进制测试宿主（`assets/img.png` / `assets/msc.mp3` / `assets/test.wav`）由 `tests/gen_hosts.py` 确定性生成（缺失时各套件自动补）。
 
 ## 快速上手（CLI）
 
@@ -87,11 +87,14 @@ creeper_cli has 输出.png 你的密码
 ## 目录结构
 
 ```
-├─ *.cpp / *.h        源码（C++17，仅系统库 + imgui/stb）
-├─ build.bat          构建脚本（w64devkit g++）
-├─ docs/              规格任务书、测试报告、产品文档（md 源）
+├─ src/               源码（C++17，仅系统库）
+│  └─ build.bat       构建脚本（w64devkit g++，输出 exe 到仓库根）
+├─ third_party/       imgui / stb（开源第三方，勿修改）
+├─ docs/              规格任务书、测试报告、产品文档（md 源 + 生成的 PDF）
+├─ assets/            测试宿主（gitignore；tests/gen_hosts.py 生成）
 ├─ tests/             测试套件（Python / PowerShell）
-└─ LICENSE            BSD 3-Clause
+├─ .github/           GitHub Actions CI（构建 + 非 GUI 套件）
+├─ README.md / README.en.md / LICENSE / AGENTS.md
 ```
 
 ## 文档

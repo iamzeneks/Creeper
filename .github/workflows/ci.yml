@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: pip install pillow numpy cryptography
+
+      - name: Download w64devkit
+        shell: pwsh
+        run: |
+          $rel = Invoke-RestMethod https://api.github.com/repos/skeeto/w64devkit/releases/latest
+          $asset = $rel.assets | Where-Object { $_.name -like "w64devkit-x64-*.zip" } | Select-Object -First 1
+          if (-not $asset) { throw "no w64devkit-x64 asset in $($rel.tag_name)" }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile w64devkit.zip
+          Expand-Archive w64devkit.zip -DestinationPath .
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:GITHUB_WORKSPACE\w64devkit\bin;$env:PATH"
+          cmd /c "src\build.bat"
+
+      - name: Generate test hosts
+        run: python tests\gen_hosts.py
+
+      - name: Test (non-GUI suites; GUI suites need an interactive desktop)
+        shell: pwsh
+        run: |
+          python tests\test_crypto.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tests\test_cross.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tests\test_png.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tests\test_mp3.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tests\test_wav.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

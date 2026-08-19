@@ -11,9 +11,9 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TMP = os.path.join(ROOT, "tests", "tmp")
 CLI = os.path.join(ROOT, "creeper_cli.exe")
-IMG = os.path.join(ROOT, "img.png")
-MP3 = os.path.join(ROOT, "msc.mp3")
-WAV = os.path.join(ROOT, "test.wav")
+IMG = os.path.join(ROOT, "assets", "img.png")
+MP3 = os.path.join(ROOT, "assets", "msc.mp3")
+WAV = os.path.join(ROOT, "assets", "test.wav")
 
 _passed = 0
 _failed = 0

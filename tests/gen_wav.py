@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """生成 WAV 隐写测试宿主 test.wav（44.1kHz/16bit/stereo 60s 合成音频）。
 
-用法：python tests/gen_wav.py [输出路径]（默认项目根 test.wav）
+用法：python tests/gen_wav.py [输出路径]（默认 assets/test.wav）
 合成内容：两声道不同频率正弦 + 轻微噪声，纯确定性（无随机种子依赖）。
 """
 import math
@@ -17,7 +17,7 @@ SECS = 60
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "test.wav")
+        os.path.dirname(os.path.abspath(__file__)), "..", "assets", "test.wav")
     out = os.path.abspath(out)
     n = RATE * SECS
     data = bytearray()
