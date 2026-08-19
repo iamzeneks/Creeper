@@ -1,0 +1,16 @@
+# 构建产物与二进制交付物
+*.exe
+*.zip
+*.pdf
+Creeper便携版/
+
+# 测试宿主（二进制，自行生成/准备）
+img.png
+msc.mp3
+test.wav
+
+# 测试产物
+tests/tmp/
+tests/results/
+__pycache__/
+*.pyc

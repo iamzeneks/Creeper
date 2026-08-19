@@ -1,0 +1,108 @@
+# Creeper — Encrypted Steganography Suite
+
+**English** | [简体中文](README.md)
+
+> Encrypt files with **AES-256-GCM** and embed them losslessly into PNG / MP3 / WAV carriers that show no visible anomalies. The GUI masquerades as a "format converter". Security depends solely on the password (Kerckhoffs's principle).
+
+## Features
+
+- **End-to-end encryption**: AES-256-GCM + PBKDF2-HMAC-SHA256 (600,000 iterations); payload presence is decided by GCM authentication, false-positive rate 2⁻¹²⁸
+- **Three carriers, zero damage to media data**:
+  - PNG: ±1 on RGB channels (LSB matching) + histogram pairing compensation + self-adversarial re-embedding
+  - WAV: lossless rewrite of the low 1–2 bits of PCM samples (configurable depth, 2× capacity)
+  - MP3: 3 auxiliary bits per MPEG frame header; audio data and ID3 regions untouched byte-for-byte
+- **No magic bytes**: headers carry no fixed signature; the scatter seed is derived from the password; presence = GCM authentication — a wrong password and no payload are indistinguishable
+- **Anti-statistical-detection**: default 15% fill-rate cap (overridable with `--cap`)
+- **Two frontends**: CLI (`creeper_cli`) + disguised GUI (`creeper_img` / `creeper_audio`, with hidden feature entry)
+- **Self-verification**: the extraction sequence is replayed bit-by-bit before writing; embedded files are read back and verified
+
+## Security Model
+
+| Item | Design |
+|---|---|
+| Encryption | AES-256-GCM (pure software, no external deps) |
+| Key derivation | PBKDF2-HMAC-SHA256, 600,000 iterations |
+| Payload presence | GCM tag authentication (wrong password / no payload → same result) |
+| Scattering | Password-derived xorshift64 sequence + linear probing, content-independent |
+| Statistical exposure | 15% default fill cap + histogram compensation / low-bit uniformization |
+| Interop | Byte-exact mutual decoding with the Python reference implementation (`tests/envelope.py`) |
+
+## Carrier Capacity
+
+| Carrier | Embedding | 100% capacity | Default 15% cap |
+|---|---|---|---|
+| PNG (2560×1600) | 1 bit per RGB channel, ±1 | ≈ 1.46 MB | ≈ 230 KB |
+| WAV (44.1kHz stereo, per minute) | low 1 bit | ≈ 661 KB | ≈ 99 KB |
+| WAV `--depth 2` | low 2 bits | ≈ 1.3 MB | ≈ 198 KB |
+| MP3 (19,194 frames) | 3 header auxiliary bits/frame | ≈ 7.2 KB | — |
+
+## Build
+
+Requires [w64devkit](https://github.com/skeeto/w64devkit) (`g++` on PATH):
+
+```bat
+build.bat
+```
+
+Produces `creeper_cli.exe` (console) and `creeper_img.exe` / `creeper_audio.exe` (GUI, `-mwindows`).
+
+## Tests
+
+```bat
+tests\run_all.bat        :: full regression, all 8 suites, non-zero exit on failure
+python tests\test_crypto.py   :: encryption round-trips + robustness
+python tests\test_png.py      :: PNG stego round-trips
+python tests\test_mp3.py      :: MP3 stego round-trips
+python tests\test_wav.py      :: WAV stego round-trips (incl. v1.0 legacy-format compat)
+python tests\test_cross.py    :: C++ ↔ Python envelope interop (critical)
+```
+
+Requires Python 3 + Pillow + numpy + cryptography. The WAV host is generated automatically when missing; provide any PNG/MP3 file as `img.png` / `msc.mp3`.
+
+## Quick Start (CLI)
+
+```bat
+:: encrypt
+creeper_cli seal secret.pdf secret.env your-password
+
+:: decrypt
+creeper_cli open secret.env out-dir your-password
+
+:: embed (hide into carrier)
+creeper_cli embed carrier.png secret.env output.png your-password
+
+:: extract
+creeper_cli extract output.png out-dir your-password
+
+:: detect (1=present, 0=absent)
+creeper_cli has output.png your-password
+```
+
+Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2` (WAV embedding depth, 2× capacity).
+
+## GUI (Disguised Mode)
+
+`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`). Single-file mode: with a password, extraction is attempted, silently falling back to fake conversion on failure; dual-file mode embeds. The hidden window also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth).
+
+## Layout
+
+```
+├─ *.cpp / *.h        source (C++17, system libs + imgui/stb only)
+├─ build.bat          build script (w64devkit g++)
+├─ docs/              specs, test report, product docs (markdown)
+├─ tests/             test suites (Python / PowerShell)
+└─ LICENSE            BSD 3-Clause
+```
+
+## Documentation
+
+- [User Guide](docs/使用说明书.md) (product manual)
+- [Technical Report](docs/技术报告.md) (design & anti-detection rationale)
+- [Encoder Spec](docs/PROMPT_ENCODER.md) / [Tester Spec](docs/PROMPT_TESTER.md)
+- [Test Report](docs/TEST_REPORT.md) (defects & verification records)
+
+## License
+
+[BSD 3-Clause](LICENSE). For lawful purposes only (privacy protection, data backup, media metadata hiding, etc.); comply with the laws of your jurisdiction.
+
+Copyright © 2026, Creeper Project Authors. All rights reserved.
