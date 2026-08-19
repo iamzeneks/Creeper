@@ -39,7 +39,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $tmpDir = Join-Path $root "tests\tmp"
 New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
 $copy = Join-Path $tmpDir "gui_quality_copy.exe"
-Copy-Item (Join-Path $root "creeper_img.exe") $copy -Force
+Copy-Item (Join-Path (Join-Path $root "res") "creeper_img.exe") $copy -Force
 
 $p = Start-Process -FilePath $copy -PassThru
 Start-Sleep -Seconds 2

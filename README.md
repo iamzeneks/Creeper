@@ -44,7 +44,7 @@
 src\build.bat
 ```
 
-产出三个可执行文件到仓库根：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。第三方依赖 `imgui/`、`stb/` 已随仓库置于 `third_party/`。
+产出三个可执行文件到 `res/`（发布包，与说明书 PDF 一起）：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。第三方依赖 `imgui/`、`stb/` 已随仓库置于 `third_party/`。
 
 ## 测试
 
@@ -88,9 +88,10 @@ creeper_cli has 输出.png 你的密码
 
 ```
 ├─ src/               源码（C++17，仅系统库）
-│  └─ build.bat       构建脚本（w64devkit g++，输出 exe 到仓库根）
+│  └─ build.bat       构建脚本（w64devkit g++，输出 exe 到 res/）
 ├─ third_party/       imgui / stb（开源第三方，勿修改）
-├─ docs/              规格任务书、测试报告、产品文档（md 源 + 生成的 PDF）
+├─ docs/              规格任务书、测试报告、产品文档（md 源）
+├─ res/               发布包（gitignore：exe + PDF 说明书）
 ├─ assets/            测试宿主（gitignore；tests/gen_hosts.py 生成）
 ├─ tests/             测试套件（Python / PowerShell）
 ├─ .github/           GitHub Actions CI（构建 + 非 GUI 套件）

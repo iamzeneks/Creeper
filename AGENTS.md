@@ -4,7 +4,7 @@ Windows 上的 C++17 隐写套件：把文件加密后藏进 PNG / MP3 / WAV。�
 
 ## 构建与测试
 
-- 构建：`src/build.bat`（ASCII-only）一次构建三个 exe 到仓库根（`../`），需 w64devkit 的 `g++` 在 PATH。GUI exe 用 `-mwindows`，CLI 不用。
+- 构建：`src/build.bat`（ASCII-only）一次构建三个 exe 到 `res/`（发布包），需 w64devkit 的 `g++` 在 PATH。GUI exe 用 `-mwindows`，CLI 不用。
 - 测试前必须先构建；临时文件放 `tests/tmp/`：
   - `python tests/test_crypto.py`（加密往返 + 健壮性）
   - `python tests/test_png.py` / `python tests/test_mp3.py` / `python tests/test_wav.py`（隐写往返）
@@ -13,14 +13,14 @@ Windows 上的 C++17 隐写套件：把文件加密后藏进 PNG / MP3 / WAV。�
   - `powershell -ExecutionPolicy Bypass -File tests\test_gui_about.ps1`（关于弹窗真实点击链路，副本 exe）
   - `powershell -ExecutionPolicy Bypass -File tests\test_gui_quality.ps1`（隐藏窗「编码质量」OCR 验证）
   - 一键全量：`tests\run_all.bat`（8 套件串行，任一失败退出非 0）
-- 测试依赖 Python 3.14 + Pillow + numpy + cryptography；`tests/tester.py` 的 `ROOT` 已相对化（仓库可移动）且 `summary()` 自动归档结果到 `tests/results/`；`tests/envelope.py` 为信封参考实现本地副本（test_cross 优先本地）；测试宿主在 `assets/`（`img.png` / `msc.mp3` / `test.wav`，`tests/gen_hosts.py` 统一生成，缺失时各自自动生成：W0 调 `gen_wav.py`）；`tests/gen_pdf.py`（md → HTML → Word COM → PDF）重建 `docs/使用说明书.pdf` / `docs/技术报告.pdf`（md 源在 `docs/`）。
+- 测试依赖 Python 3.14 + Pillow + numpy + cryptography；`tests/tester.py` 的 `ROOT` 已相对化（仓库可移动）且 `summary()` 自动归档结果到 `tests/results/`；`tests/envelope.py` 为信封参考实现本地副本（test_cross 优先本地）；测试宿主在 `assets/`（`img.png` / `msc.mp3` / `test.wav`，`tests/gen_hosts.py` 统一生成，缺失时各自自动生成：W0 调 `gen_wav.py`）；`tests/gen_pdf.py`（md → HTML → Word COM → PDF）重建 `res/使用说明书.pdf` / `res/技术报告.pdf`（md 源在 `docs/`）。
 - 已知问题别当新 bug 报：OBS-2 已修复（`crypto.cpp` DEFLATE 升级 LZ77 + 三路块编码：固定/动态哈夫曼/存储块取最短，与 Python zlib 差距收敛，极端重复文本 1.9× 系 LZ77 匹配策略差异非缺陷）。历史缺陷 BUG-1（ID3v2 标签大小 +10 字节）已修复；OBS-1（`has` 对空文件返回 0）已随无魔数改造正式化（空文件 = 无载荷 = 0，合理语义）。改动相关代码须同步更新 TEST_REPORT.md。
 - GUI 窗口为固定尺寸（不可缩放/最大化），尺寸按系统 DPI 缩放（`common_ui.cpp` `ui_run`，逻辑 1000×640 × `GetDpiForSystem()/96` 物理像素，超出工作区退回并居中）；改动布局时保证主界面铺满客户区（`vp-2` + `NoResize|NoMove|NoCollapse`），控件 label 一律放左侧（`Text` + `##` 隐藏 label），勿改回可自由缩放样式。
 
 ## 硬约束
 
 - **禁止修改 `third_party/stb/` 和 `third_party/imgui/`，禁止引入新依赖**（只许系统库 + 现有第三方）。
-- 项目是 git 仓库（BSD 3-Clause）；根目录 .exe / .zip / `Creeper便携版/`（分发目录，含 PDF 说明书）都是交付物（已被 .gitignore 排除，不进版本库），别删别乱动，exe 变更后需同步便携版。
+- 项目是 git 仓库（BSD 3-Clause）；`res/`（发布包：exe + PDF 说明书）与 `.zip` / `Creeper便携版/`（分发目录）都是交付物（已被 .gitignore 排除，不进版本库），别删别乱动，exe 变更后需同步便携版。
 
 ## 文件格式（改任何一处必须保持与参考实现字节级兼容）
 

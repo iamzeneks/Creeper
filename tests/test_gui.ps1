@@ -6,7 +6,7 @@ $root = 'C:\Users\Zeneks\Documents\code\creeper'
 $fails = 0
 
 foreach ($name in @('creeper_img', 'creeper_audio')) {
-    $exe = Join-Path $root "$name.exe"
+    $exe = Join-Path (Join-Path $root "res") "$name.exe"
     if (-not (Test-Path $exe)) {
         Write-Host "[FAIL] $exe missing"
         $fails++

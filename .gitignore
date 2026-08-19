@@ -1,7 +1,8 @@
-# 构建产物与二进制交付物
+﻿# 构建产物与二进制交付物
 *.exe
 *.zip
 Creeper便携版/
+res/
 
 # 测试宿主（二进制，由 tests/gen_hosts.py 生成）
 assets/img.png

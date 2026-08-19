@@ -143,8 +143,8 @@ def main():
         pairs.append((sys.argv[2], sys.argv[1]))
     else:
         pairs = [
-            (os.path.join(ROOT, "docs", "使用说明书.md"), os.path.join(ROOT, "docs", "使用说明书.pdf")),
-            (os.path.join(ROOT, "docs", "技术报告.md"), os.path.join(ROOT, "docs", "技术报告.pdf")),
+            (os.path.join(ROOT, "docs", "使用说明书.md"), os.path.join(ROOT, "res", "使用说明书.pdf")),
+            (os.path.join(ROOT, "docs", "技术报告.md"), os.path.join(ROOT, "res", "技术报告.pdf")),
         ]
     for md_path, pdf_path in pairs:
         convert(md_path, pdf_path)
