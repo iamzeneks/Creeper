@@ -9,9 +9,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tester as T
 
-# 优先使用本地 tests/envelope.py（参考实现副本），缺失时回退外部权威路径
+# 使用本地 tests/envelope.py（参考实现副本）
 _LOCAL_ENV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "envelope.py")
-ENV_PY_DIR = os.path.dirname(_LOCAL_ENV) if os.path.exists(_LOCAL_ENV) else r"C:\Users\Zeneks\.openclaw\workspace\creeper"
+if not os.path.exists(_LOCAL_ENV):
+    raise SystemExit("missing tests/envelope.py (envelope reference implementation)")
+ENV_PY_DIR = os.path.dirname(_LOCAL_ENV)
 sys.path.insert(0, ENV_PY_DIR)
 import envelope
 

@@ -1,16 +1,16 @@
 # PROMPT_ENCODER.md — 编码 Agent 任务书
 
-> 你是 **编码 agent**。任务：在 `C:\Users\Zeneks\Documents\code\creeper` 下实现一个 C++ 隐写工具（伪装成格式转换软件）。
+> 你是 **编码 agent**。任务：在项目根目录下实现一个 C++ 隐写工具（伪装成格式转换软件）。
 > 所有规格**必须**严格按本文档执行，不得自行更改文件格式（测试 agent 依赖这些格式做交叉验证）。
 
 ## 0. 工作目录与现有资源（已就绪，勿动）
 
-- 项目根：`C:\Users\Zeneks\Documents\code\creeper`
+- 项目根：仓库根目录（`src/`、`tests/`、`docs/`、`res/` 所在目录）
 - `stb/stb_image.h`、`stb/stb_image_write.h` — 已下载，**禁止修改**
 - `imgui/`（完整 Dear ImGui 1.92+ master）+ `imgui/backends/`（imgui_impl_win32 + imgui_impl_dx11）— 已下载，**禁止修改**
 - 宿主测试文件：`img.png`（8.8MB）、`msc.mp3`（20MB）、`src.png`（235MB，载荷素材）
 - 编译器：`g++` (w64devkit 15.2.0)，可用链接库：`-lbcrypt -ld3d11 -ldxgi -lgdi32 -limm32 -luser32 -lshell32 -lole32 -luuid -lcomdlg32 -ldwmapi`
-- 参考原型：`C:\Users\Zeneks\.openclaw\workspace\creeper\envelope.py`（Python 版信封格式，**C++ 必须字节级兼容**，用于交叉验证）
+- 参考原型：`tests/envelope.py`（Python 版信封格式，**C++ 必须字节级兼容**，用于交叉验证）
 
 ## 1. 交付物清单
 

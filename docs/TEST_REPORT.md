@@ -1,7 +1,7 @@
 # creeper 隐写工具测试报告（TEST_REPORT.md）
 
 - **测试时间**：2026-08-18（00:21–01:00 GMT+8）；**复测更新**：2026-08-18（10:55–11:20 GMT+8）；**MP3 方案重测**：2026-08-18（14:00–15:00 GMT+8）；**PNG 方案重测**：2026-08-18（16:00–17:00 GMT+8）；**无魔数加固后全量回归**：2026-08-18（20:00–20:40 GMT+8）；**第二梯队加固后全量回归**：2026-08-18（23:00–23:40 GMT+8）；**WAV 载体新增后全量回归**：2026-08-19（00:30–01:00 GMT+8）；**GUI 关于弹窗改造后全量回归**：2026-08-19（22:30–23:00 GMT+8）；**OBS-2 压缩率修复 + 测试基建重建后全量回归**：2026-08-19（23:40–24:00 GMT+8）；**GUI 编码质量 + 测试基建补充后全量回归**：2026-08-19（24:10–24:40 GMT+8）；**WAV 2-bit 高容量模式后全量回归**：2026-08-19（24:40–25:10 GMT+8）；**WAV-3 三档深度 + GUI 测试加固后全量回归**：2026-08-19（25:30–26:10 GMT+8）；**SPLIT 大文件分片多宿主后全量回归**：2026-08-20（02:00–02:40 GMT+8）
-- **被测对象**：`C:\Users\Zeneks\Documents\code\creeper` 下 `../creeper_cli.exe` / `../creeper_img.exe` / `../creeper_audio.exe`（2026-08-19 25:10 构建；含 MP3-1 帧头辅助位 + PNG-1 ±1 嵌入与直方图补偿 + NO-MAGIC-1 无魔数加固 + NO-MAGIC-2 头区密码化与帧级 keystream + 自对抗重嵌 + WAV-1 PCM 无损 LSB 载体 + GUI-1 原生关于弹窗 + OBS-2 动态哈夫曼压缩器 + GUI-2 编码质量 + WAV-2 承载深度可配置 + WAV-3 depth=3 三档深度 + GUI 测试前台加固 + SPLIT 大文件分片多宿主）
+- **被测对象**：仓库根目录下 `creeper_cli.exe` / `creeper_img.exe` / `creeper_audio.exe`（2026-08-19 25:10 构建；含 MP3-1 帧头辅助位 + PNG-1 ±1 嵌入与直方图补偿 + NO-MAGIC-1 无魔数加固 + NO-MAGIC-2 头区密码化与帧级 keystream + 自对抗重嵌 + WAV-1 PCM 无损 LSB 载体 + GUI-1 原生关于弹窗 + OBS-2 动态哈夫曼压缩器 + GUI-2 编码质量 + WAV-2 承载深度可配置 + WAV-3 depth=3 三档深度 + GUI 测试前台加固 + SPLIT 大文件分片多宿主）
 - **环境**：Windows 10.0.26200 x64；Python 3.14.4 + Pillow 12.2.0 + numpy 2.4.4 + cryptography 49.0.0
 - **测试素材**：`img.png`（RGBA 2560×1600，8.8MB）、`msc.mp3`（20MB，自带 ID3v2.3 标签 30981B / 11 个帧 / 306B padding）、`test.wav`（44.1kHz/16bit/stereo 60s 合成音频，10.1MB，生成脚本见 test_wav.py 注释）、`src.png`（RGBA 30000×5000，235MB）
 - **字节比较方法**：Python 字节级比较 + SHA-256 摘要（`fc /b` 与 PowerShell 的 `fc` 别名冲突，故未使用；任务书允许任选其一）
@@ -162,7 +162,7 @@
 **复跑方法**（注意：各套件需顺序执行，勿并发——它们共用并会清空 `../tests/tmp/`）：
 
 ```
-cd C:\Users\Zeneks\Documents\code\creeper
+cd <仓库根目录>
 python -X utf8 tests\test_crypto.py
 python -X utf8 tests\test_cross.py
 python -X utf8 tests\test_png.py
@@ -325,7 +325,7 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 ### 测试基建重建
 
 - **tester.py**：`ROOT` 硬编码绝对路径 → `os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))`，仓库可整体移动
-- **../tests/envelope.py**（3325B）：Python 信封参考实现本地化副本；`test_cross.py` 优先加载本地，缺失时回退外部权威路径（`C:\Users\Zeneks\.openclaw\workspace\creeper\envelope.py`），9/9 通过
+- **../tests/envelope.py**（3325B）：Python 信封参考实现本地化副本；`test_cross.py` 优先加载本地，缺失时报错退出（不再依赖外部权威路径），9/9 通过
 - **../tests/gen_wav.py**：确定性合成 `test.wav` 宿主（44.1kHz/16bit/stereo 60s 纯正弦）；`test_wav.py` W0 在宿主缺失时自动生成
 - **test_wav.py 扩充（26 → 31）**：W9 新增 8-bit PCM 往返（无损：头区零改动 + 样本差 ≤ 1；载荷按 10% 容量取值，15% 会因信封头开销超限）与 float（WAVE_FORMAT_IEEE_FLOAT）拒绝（`unsupported wav format (need PCM)`，rc=1）
 - **../tests/gen_pdf.py**：重建（初版误删于 ../tests/tmp）；md（`使用说明书.md`/`技术报告.md`）→ 简易 HTML（标题/表格/列表/粗体）→ Word COM `ExportAsFixedFormat(17)` → PDF；PDF 被占用先杀 WINWORD；根目录旧版 `技术报告.pdf`（265,407B，8/18 凌晨遗留）已删除（**2026-08-20 废弃**：文档交付物统一改回 markdown，`gen_pdf.py` 与 `res/`、便携版内的 PDF 一并删除，源文档以 `docs/` 下 md 为准）

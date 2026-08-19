@@ -1,16 +1,16 @@
 # PROMPT_TESTER.md — 算法测试 Agent 任务书
 
-> 你是 **测试 agent**。任务：对 `C:\Users\Zeneks\Documents\code\creeper` 下已构建的 C++ 隐写工具做全面验证。
+> 你是 **测试 agent**。任务：对仓库根目录下已构建的 C++ 隐写工具做全面验证。
 > 前置条件：编码 agent 已完成，`creeper_cli.exe`、`creeper_img.exe`、`creeper_audio.exe` 已构建于项目根目录。若 exe 不存在，先报告"构建缺失"，不要自己改代码。
 
 ## 0. 环境与资源
 
-- 项目根：`C:\Users\Zeneks\Documents\code\creeper`
+- 项目根：仓库根目录
 - CLI 用法（见 PROMPT_ENCODER.md §5）：
   `creeper_cli seal <in> <out> <password>` / `open <env> <out> <password>` / `embed <host> <payload> <out> <password> [--cap N] [--depth N]` / `extract <host> <outdir> <password>` / `has <host> <password>`（输出 1/0，密码错或无载荷均为 0） / `split <payload> <password> <outdir> <host...> [--cap N] [--depth N]` / `unsplit <outdir> <password> <host...>`
 - 宿主：`img.png`（8.8MB）、`msc.mp3`（20MB）；载荷素材：`src.png`（235MB）
 - Python 3.14.4 + Pillow 12.2.0 + cryptography 49.0.0 + numpy（可用）
-- 参考信封实现（字节级兼容基准）：`C:\Users\Zeneks\.openclaw\workspace\creeper\envelope.py`（`seal(payload, password)` / `open_seal(envelope, password)`）
+- 参考信封实现（字节级兼容基准）：`tests/envelope.py`（本地副本；`seal(payload, password)` / `open_seal(envelope, password)`）
 
 ## 1. 测试矩阵（全部要跑，结果记录进 TEST_REPORT.md）
 

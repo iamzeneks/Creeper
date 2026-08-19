@@ -2,7 +2,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 # Note: ASCII-only messages to avoid encoding issues under Windows PowerShell 5.1.
 $ErrorActionPreference = 'Continue'
-$root = 'C:\Users\Zeneks\Documents\code\creeper'
+$root = Split-Path -Parent $PSScriptRoot
 $fails = 0
 
 foreach ($name in @('creeper_img', 'creeper_audio')) {
