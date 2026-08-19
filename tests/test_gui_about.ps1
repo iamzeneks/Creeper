@@ -58,14 +58,16 @@ try {
     $bx = $r.L + [int](($r.R - $r.L) * 0.962)
     $by = $r.T + [int](($r.B - $r.T) * 0.948)
     $pt = New-Object W32G+POINT; $pt.X = $bx; $pt.Y = $by
+
+    [void][W32G]::SetForegroundWindow($hwnd)
+    [void][W32G]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0001 -bor 0x0002)
+    Start-Sleep -Milliseconds 400
+    # WindowFromPoint 检查必须在置顶/激活之后：否则被上层窗口（资源管理器等）遮挡误判
     if ([W32G]::WindowFromPoint($pt) -ne $hwnd) {
         Write-Output "FAIL: about point not inside Creeper window"
         exit 1
     }
 
-    [void][W32G]::SetForegroundWindow($hwnd)
-    [void][W32G]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0001 -bor 0x0002)
-    Start-Sleep -Milliseconds 400
     [void][W32G]::SetCursorPos($bx, $by)
     Start-Sleep -Milliseconds 400
     [void][W32G]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)

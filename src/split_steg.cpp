@@ -126,7 +126,50 @@ void parse_stream_head(const std::vector<uint8_t>& stream, HostKind kind,
     env.assign(stream.begin() + off + 6 + nl, stream.end());
 }
 
+// 每宿主可用字节：floor(容量×填充率) − 隐写头开销 − 分片块头(12B)。
+// MP3 无填充率概念（辅助位方案不破坏音频数据），按 100% 计。
+// 与 split_embed 容量判定共用同一公式，避免两处漂移。
+static void compute_avail(const std::vector<std::string>& hosts, size_t name_len,
+                          int cap_pct, int depth, std::vector<size_t>& avail,
+                          std::vector<HostKind>& kinds, size_t& total_avail) {
+    const size_t head_overhead = 2 + name_len + 4; // name_len + name + env_len
+    const size_t wav_extra = 1;                    // depth 首字节
+    const size_t block_head = 12;                  // magic + index + count + chunk_len
+    avail.clear();
+    kinds.clear();
+    total_avail = 0;
+    for (const auto& h : hosts) {
+        HostKind k = host_kind(h);
+        kinds.push_back(k);
+        size_t cap = host_capacity(h, k, depth);
+        int pct = (k == HostKind::MP3) ? 100 : cap_pct;
+        size_t overhead = head_overhead + (k == HostKind::WAV ? wav_extra : 0) + block_head;
+        size_t a = (size_t)((uint64_t)cap * (uint64_t)pct / 100);
+        if (a <= overhead) {
+            avail.push_back(0);
+        } else {
+            a -= overhead;
+            avail.push_back(a);
+        }
+        total_avail += avail.back();
+    }
+}
+
 } // namespace
+
+SplitCapacity split_capacity_report(const std::string& payload_path,
+                                    const std::vector<std::string>& hosts,
+                                    int cap_pct, int depth) {
+    SplitCapacity rep;
+    if (hosts.empty() || cap_pct < 0 || cap_pct > 100 || depth < 1 || depth > 3) return rep;
+    std::vector<uint8_t> payload = read_file_bytes(payload_path);
+    if (payload.empty()) return rep;
+    rep.need = crypto_payload_size(payload); // 压缩 + 信封头后的精确字节数
+    std::vector<size_t> avail;
+    std::vector<HostKind> kinds;
+    compute_avail(hosts, file_basename(payload_path).size(), cap_pct, depth, avail, kinds, rep.have);
+    return rep;
+}
 
 void split_embed(const std::string& payload_path, const std::string& password,
                  const std::vector<std::string>& hosts, const std::string& out_dir,
@@ -145,29 +188,11 @@ void split_embed(const std::string& payload_path, const std::string& password,
 
     uint32_t magic = crypto_steg_seed(password, xstr(kSplitTagXor, sizeof(kSplitTagXor)));
 
-    // 每宿主可用字节：floor(容量×填充率) − 隐写头开销 − 分片块头(12B)。
-    // MP3 无填充率概念（辅助位方案不破坏音频数据），按 100% 计。
-    const size_t head_overhead = 2 + name.size() + 4; // name_len + name + env_len
-    const size_t wav_extra = 1;                       // depth 首字节
-    const size_t block_head = 12;                     // magic + index + count + chunk_len
+    // 每宿主可用字节（与 split_capacity_report 同一公式）
     std::vector<size_t> avail;
     std::vector<HostKind> kinds;
     size_t total_avail = 0;
-    for (const auto& h : hosts) {
-        HostKind k = host_kind(h);
-        kinds.push_back(k);
-        size_t cap = host_capacity(h, k, depth);
-        int pct = (k == HostKind::MP3) ? 100 : cap_pct;
-        size_t overhead = head_overhead + (k == HostKind::WAV ? wav_extra : 0) + block_head;
-        size_t a = (size_t)((uint64_t)cap * (uint64_t)pct / 100);
-        if (a <= overhead) {
-            avail.push_back(0);
-        } else {
-            a -= overhead;
-            avail.push_back(a);
-        }
-        total_avail += avail.back();
-    }
+    compute_avail(hosts, name.size(), cap_pct, depth, avail, kinds, total_avail);
     if (total_avail < env.size())
         throw std::runtime_error("payload too large for combined host capacity (need " +
                                  std::to_string(env.size()) + " bytes, have " +
@@ -188,6 +213,7 @@ void split_embed(const std::string& payload_path, const std::string& password,
 
     // 组装各块并嵌入
     if (!out_dir.empty()) create_dirs(out_dir);
+    const size_t block_head = 12; // magic + index + count + chunk_len
     size_t used = 0;
     for (size_t i = 0, idx = 0; i < hosts.size() && idx < (size_t)count; i++) {
         if (avail[i] == 0) continue;

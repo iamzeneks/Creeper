@@ -289,7 +289,7 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 ### GUI-1（已实现，已验证）：关于页改为原生模态对话框
 
 - **背景**：原「关于」是 ImGui 共享窗口内的假弹窗（与主界面同一窗口、尺寸大）；需求改为**真正独立弹出的原生 Win32 弹窗**且更紧凑
-- **实现**（`common_ui.cpp`）：窗口类 `XhAboutDlg`（`RegisterClassExW`，`about_proc` WndProc）；`show_about_dialog()` 同步模态：`EnableWindow(g_hwnd, FALSE)` + 自跑 `GetMessageW` 循环（`WM_QUIT` 重新投递）+ 结束后 `EnableWindow(g_hwnd, TRUE)`；窗口 400×254 逻辑 × `GetDpiForSystem()/96` 缩放，`WS_EX_DLGMODALFRAME` + `WS_SYSMENU`；内容 = 程序名（标题字体）+ 北京星辉数媒科技有限公司 + 京ICP备2026051828号-1 + Copyright (C) 2024-2026 Beijing Xinghui Digital Media Co., Ltd. + All rights reserved. + 免责一行；按钮「关闭」（IDC_ABOUT_CLOSE=1001 → DestroyWindow）「访问官网」（IDC_ABOUT_SITE=1002 → DestroyWindow 后 `MessageBoxW` MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2，文案含完整 URL；是 → `g_self_destruct=true` + `PostMessageW(g_hwnd, WM_CLOSE)`）；字体 Microsoft YaHei（20/16/13px），灰色小字经 `SetProp(h,"gray")` + `WM_CTLCOLORSTATIC`；旧 ImGui 假弹窗（`g_about_open`/`g_about_confirm`/`draw_about_window`/`draw_about_confirm_modal`）删除
+- **实现**（`common_ui.cpp`）：窗口类 `XhAboutDlg`（`RegisterClassExW`，`about_proc` WndProc）；`show_about_dialog()` 同步模态：`EnableWindow(g_hwnd, FALSE)` + 自跑 `GetMessageW` 循环（`WM_QUIT` 重新投递）+ 结束后 `EnableWindow(g_hwnd, TRUE)`；窗口 400×254 逻辑 × `GetDpiForSystem()/96` 缩放，`WS_EX_DLGMODALFRAME` + `WS_SYSMENU`；内容 = 程序名（标题字体）+ 北京星辉数媒科技有限公司 + Copyright (C) 2024-2026 Beijing Xinghui Digital Media Co., Ltd. + All rights reserved. + 免责一行；按钮「关闭」（IDC_ABOUT_CLOSE=1001 → DestroyWindow）「访问官网」（IDC_ABOUT_SITE=1002 → DestroyWindow 后 `MessageBoxW` MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2，文案含完整 URL；是 → `g_self_destruct=true` + `PostMessageW(g_hwnd, WM_CLOSE)`）；字体 Microsoft YaHei（20/16/13px），灰色小字经 `SetProp(h,"gray")` + `WM_CTLCOLORSTATIC`；旧 ImGui 假弹窗（`g_about_open`/`g_about_confirm`/`draw_about_window`/`draw_about_confirm_modal`）删除
 - **验证**（进程级 + UI 自动化，PowerShell P/Invoke）：
   - 弹窗真实打开：`EnumWindows` 找到类 `XhAboutDlg`，rect 400×254（虚拟坐标，进程 unaware 下 GetDpiForSystem=96 缩放 1.0）
   - 「访问官网」→ BM_CLICK → `#32770` 确认框出现（按钮 是(&Y)/否(&N)）→ 点「否」进程存活 → 点「是」进程退出且 **exe 被自删**（副本验证）
@@ -377,3 +377,13 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 - **实现**（`split_steg.h/cpp` + 三模块新增接口）：先整体 `crypto_seal`（一个 AES-GCM 信封）再切分密文——单块无法认证（提取端「无载荷」），收齐所有块按 index 拼接后整体 GCM 认证还原，单宿主截获无意义；每宿主隐写流 = 标准头（name_len+name+env_len，WAV 前多 1B depth）+ env = `magic(4B) + index(2B BE) + count(2B BE) + chunk_len(4B BE) + chunk`，magic = `crypto_steg_seed(password, "creeper-split")` 大端（密码派生无明文特征）；容量分配 = 每宿主 `floor(容量×填充率) − 头开销` 顺序填装（MP3 100%，辅助位方案无填充率概念）；输出 `宿主_已转换.ext`
 - **验证**：`test_split.py` **18/18**（S1 2PNG+WAV 三块往返、S2 乱序拼接、S3 PNG+WAV+MP3 混合、S4 缺块报 missing、S5 密码错失败、S6 单块 extract 失败 + has=0、S7 超总和容量报错、S8 depth2 分片、S9 空密码、S10 普通单宿主文件 unsplit 视为无载荷）；全量回归 **166/166**
 - **GUI**：多文件（2+）有密码时由「硬件加速」勾选分派——勾选=嵌入（最后=载荷），不勾选=提取（全宿主）；「上移」「下移」按钮排序；无密码一律假装批量转换（不暴露）；单文件逻辑零变化
+
+### GUI-4（已实现，已验证）：2 文件一律嵌入 + 密码字段假数据 + 嵌入前容量预检
+
+- **背景**：① 一个宿主+一个载荷（2 文件）是明确角色结构，勾不勾选「硬件加速」都该嵌入，不该因勾选被当作"解密合并"；② 隐藏窗密码字段（img「镜头格式」/ audio「流派」）原本留空，其他字段都是预制假数据，"就它一个空着"反而可疑；③ 载荷超出当前档位容量时应"插入前事先告知"，而非转换中途失败。
+- **实现**（`common_ui.cpp` + `crypto.h/cpp` + `split_steg.h/cpp`）：
+  - **2 文件一律嵌入**：分派条件 `hw_accel || files.size()==2` → 2 文件（有密码）进入 split_embed（1 宿主+1 载荷），勾选框不再影响；3+ 文件仍由勾选分派（勾选=嵌入 / 不勾选=提取）；无密码仍一律假装批量转换
+  - **密码字段假数据**：fill_presets 给「镜头格式」填"RAW"、「流派」填"流行"（与其它预制数据同款可信度）；新增 `pwd_touched`/`genre_touched` 编辑回调（`ImGuiInputTextFlags_CallbackEdit`）跟踪是否被用户改动——**未编辑过点确定一律视为空密码**（假数据绝不当真密码用）；「恢复默认」重置 touched；对外界面不暴露
+  - **嵌入前容量预检**：新增 `crypto_payload_size`（= DEFLATE 压缩后 + 41B 信封头的精确字节数，无需派生密钥）与 `split_capacity_report`（与 split_embed 同一 `compute_avail` 公式，杜绝两处漂移）；start_conversion 在启动工作线程前**同步**预检，`have < need` 时直接弹窗「转换失败：文件过大，超出当前输出质量档位可容纳的大小（载荷约 X，档位最多约 Y）。请调高「编码质量」或分拆文件后重试。」并 return——不写任何宿主文件
+  - **移除 ICP 备案号**：关于弹窗删除"京ICP备2026051828号-1"（保留伪公司名/版权/免责文案），AGENTS/PROMPT_ENCODER/TEST_REPORT 同步删除引用
+- **验证**：全量回归 **166/166**（行为变更不改加密/隐写/往返语义，分片/整理重建后 GUI 三套件全过）；容量预检与 split_embed 判定同源（`crypto_payload_size` ≡ `crypto_seal` 产物字节数，`compute_avail` 共用），由 S7 超容量 CLI 用例覆盖同源公式

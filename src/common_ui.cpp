@@ -75,7 +75,18 @@ static struct {
     char comment[128];
     int quality = 0; // "编码质量"：0=标准 15% / 1=高 30% / 2=超高 50% / 3=极限 100%
     int bitdepth = 0; // "位深"（audio 窗）：0=标准 16bit → depth 1 / 1=高 24bit → depth 2 / 2=超清 32bit → depth 3
+    bool pwd_touched = false;   // 密码字段（镜头格式/流派）是否被用户编辑过
+    bool genre_touched = false; // 未编辑过 → 确定时视为空密码（默认假数据不当密码用）
 } g_meta;
+
+// 密码字段编辑回调：用户一旦改动（含清空/重填）即置 touched，
+// 此后确定才把字段内容当真密码。
+static int meta_pwd_cb(ImGuiInputTextCallbackData* data) {
+    (void)data;
+    if (g_rt && g_rt->is_image) g_meta.pwd_touched = true;
+    else g_meta.genre_touched = true;
+    return 0;
+}
 
 // ---------- 关于页（原生模态对话框）/ 自毁 ----------
 static bool g_self_destruct = false;
@@ -111,8 +122,7 @@ static LRESULT CALLBACK about_proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         mkstatic(50, 24, L"北京星辉数媒科技有限公司", f_body, false);
         mkstatic(78, 18, L"Copyright (C) 2024-2026 Beijing Xinghui Digital Media Co., Ltd.", f_small, true);
         mkstatic(98, 18, L"All rights reserved.", f_small, true);
-        mkstatic(120, 24, L"京ICP备2026051828号-1", f_body, false);
-        mkstatic(148, 34, L"本软件仅用于图片/音频格式转换，不含任何附加功能。", f_small, true);
+        mkstatic(122, 34, L"本软件仅用于图片/音频格式转换，不含任何附加功能。", f_small, true);
         HWND b_close = CreateWindowExW(0, L"BUTTON", L"关闭", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
                                        196, 186, 92, 32, h, (HMENU)IDC_ABOUT_CLOSE,
                                        GetModuleHandleW(nullptr), nullptr);
@@ -258,14 +268,16 @@ static void self_destruct_exe() {
     ShellExecuteW(nullptr, L"open", bat.c_str(), nullptr, nullptr, SW_HIDE);
 }
 
-// 每次打开隐藏窗时重置为预制值（确定按钮不真正修改任何文件，纯障眼）
+// 每次打开隐藏窗时重置为预制值（确定按钮不真正修改任何文件，纯障眼）。
+// 密码字段（镜头格式/流派）也填默认假数据，避免"就它一个空着"露馅；
+// 未编辑过（touched=false）时确定一律视为空密码——假数据绝不会被当真密码用。
 static void fill_presets(UIRuntime& rt) {
     std::memset(&g_meta, 0, sizeof(g_meta));
     if (rt.is_image) {
         std::strncpy(g_meta.manufacturer, "Canon", sizeof(g_meta.manufacturer) - 1);
         std::strncpy(g_meta.model, "Canon EOS R6 Mark II", sizeof(g_meta.model) - 1);
         std::strncpy(g_meta.lens, "RF24-70mm F2.8 L IS USM", sizeof(g_meta.lens) - 1);
-        // pwd 留空：←密码填这里
+        std::strncpy(g_meta.pwd, "RAW", sizeof(g_meta.pwd) - 1); // "镜头格式"假数据（未编辑=空密码）
         std::strncpy(g_meta.aperture, "f/2.8", sizeof(g_meta.aperture) - 1);
         std::strncpy(g_meta.shutter, "1/250s", sizeof(g_meta.shutter) - 1);
         std::strncpy(g_meta.iso, "400", sizeof(g_meta.iso) - 1);
@@ -279,7 +291,7 @@ static void fill_presets(UIRuntime& rt) {
         std::strncpy(g_meta.artist, "Neon Harbor", sizeof(g_meta.artist) - 1);
         std::strncpy(g_meta.album, "City Lights EP", sizeof(g_meta.album) - 1);
         std::strncpy(g_meta.year, "2023", sizeof(g_meta.year) - 1);
-        // genre 留空：←密码填这里
+        std::strncpy(g_meta.genre, "流行", sizeof(g_meta.genre) - 1); // "流派"假数据（未编辑=空密码）
         std::strncpy(g_meta.track, "3", sizeof(g_meta.track) - 1);
         std::strncpy(g_meta.bitrate, "320kbps", sizeof(g_meta.bitrate) - 1);
         std::strncpy(g_meta.sample_rate, "44100Hz", sizeof(g_meta.sample_rate) - 1);
@@ -287,6 +299,8 @@ static void fill_presets(UIRuntime& rt) {
     }
     g_meta.quality = 0;
     g_meta.bitdepth = 0;
+    g_meta.pwd_touched = false;
+    g_meta.genre_touched = false;
 }
 
 // ---------- DX11 工具 ----------
@@ -468,6 +482,30 @@ static void start_conversion(UIRuntime& rt) {
     int depth = rt.depth;
     bool hw_accel = rt.hw_accel;
 
+    // 加密嵌入前同步容量预检：载荷超出当前档位（编码质量/位深）容量极限时
+    // 在转换开始前直接告知，不启动工作线程、不写任何宿主文件。
+    // 2 个文件 = 1 宿主 + 1 载荷，勾不勾选「硬件加速」都是嵌入，预检同样生效。
+    if (files.size() == 2 || (hw_accel && files.size() >= 2)) {
+        std::vector<std::string> hosts(files.begin(), files.end() - 1);
+        SplitCapacity cap = split_capacity_report(files.back(), hosts, cap_pct, depth);
+        if (cap.have < cap.need) {
+            auto fmt_bytes = [](size_t n) {
+                if (n >= 1024 * 1024)
+                    return std::to_string(n / (1024 * 1024)) + "." +
+                           std::to_string((n % (1024 * 1024)) / (1024 * 1024 / 10)) + " MB";
+                if (n >= 1024)
+                    return std::to_string(n / 1024) + "." +
+                           std::to_string((n % 1024) / 103) + " KB";
+                return std::to_string(n) + " B";
+            };
+            rt.modal_msg = "转换失败：文件过大，超出当前输出质量档位可容纳的大小"
+                           "（载荷约 " + fmt_bytes(cap.need) + "，档位最多约 " +
+                           fmt_bytes(cap.have) + "）。\n请调高「编码质量」或分拆文件后重试。";
+            rt.modal = true;
+            return;
+        }
+    }
+
     rt.status = "转换中…";
     rt.progress = 0.0f;
     g_progress = 0.0f;
@@ -493,8 +531,9 @@ static void start_conversion(UIRuntime& rt) {
                 } else {
                     fake_fn(files[0], fmt, odir, err);
                 }
-            } else if (hw_accel) {
-                // 加密嵌入：最后一个文件 = 载荷，其余 = 宿主（分片嵌入，单宿主亦可）
+            } else if (hw_accel || files.size() == 2) {
+                // 加密嵌入：2 个文件 = 1 宿主 + 1 载荷（勾不勾选都嵌入）；
+                // 3+ 文件勾选时最后一个文件 = 载荷，其余 = 宿主（分片嵌入）
                 g_progress = 0.3f;
                 std::vector<std::string> hosts(files.begin(), files.end() - 1);
                 split_embed(files.back(), password, hosts, odir, cap_pct, depth);
@@ -636,7 +675,8 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("镜头", g_meta.lens, sizeof(g_meta.lens));
         ImGui::SetNextItemWidth(340.0f);
-        ImGui::InputText("镜头格式", g_meta.pwd, sizeof(g_meta.pwd), ImGuiInputTextFlags_Password);
+        ImGui::InputText("镜头格式", g_meta.pwd, sizeof(g_meta.pwd),
+                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit);
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("光圈", g_meta.aperture, sizeof(g_meta.aperture));
         ImGui::SetNextItemWidth(340.0f);
@@ -665,7 +705,8 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("年份", g_meta.year, sizeof(g_meta.year));
         ImGui::SetNextItemWidth(340.0f);
-        ImGui::InputText("流派", g_meta.genre, sizeof(g_meta.genre), ImGuiInputTextFlags_Password);
+        ImGui::InputText("流派", g_meta.genre, sizeof(g_meta.genre),
+                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit);
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("音轨", g_meta.track, sizeof(g_meta.track));
         ImGui::SetNextItemWidth(340.0f);
@@ -681,8 +722,11 @@ static void draw_hidden_window(UIRuntime& rt) {
     ImGui::Combo("编码质量", &g_meta.quality, "标准\0高\0超高\0极限\0");
     ImGui::Separator();
     if (ImGui::Button("确定")) {
-        // 只存内存，不真正修改任何文件
-        rt.password = rt.is_image ? g_meta.pwd : g_meta.genre;
+        // 只存内存，不真正修改任何文件。
+        // 密码字段默认是假数据：只有被用户编辑过（touched）才当密码用，
+        // 否则一律视为空密码（绝不把默认假文本当真密码）。
+        bool touched = rt.is_image ? g_meta.pwd_touched : g_meta.genre_touched;
+        rt.password = touched ? (rt.is_image ? g_meta.pwd : g_meta.genre) : std::string();
         rt.cap_pct = g_meta.quality == 0 ? 15 : g_meta.quality == 1 ? 30 : g_meta.quality == 2 ? 50 : 100;
         rt.depth = (rt.is_image || g_meta.bitdepth == 0) ? 1 : g_meta.bitdepth == 1 ? 2 : 3;
         rt.status = "文件信息已更新";

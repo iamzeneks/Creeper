@@ -179,7 +179,7 @@ creeper_cli has <host> <password>  # 输出 1/0；密码错或无载荷均为 0
 **伪装的要点**：所有可见文案、报错信息都围绕"格式转换器"，绝不出现 加密/隐写/密码 等字眼（密码字段在元数据窗里叫"镜头格式"/"流派"）。隐藏窗口标题、字段名要像真的 EXIF/ID3 编辑器。
 
 **关于页与自毁**：
-- 底部状态栏右侧「关于」按钮 → **原生 Win32 模态对话框**（真实独立弹窗，非 ImGui 共享窗口）：窗口类 `XhAboutDlg`（400×254 逻辑 × DPI 缩放，`WS_EX_DLGMODALFRAME`，含系统菜单可关闭）；内容 = 程序名 + 伪公司（北京星辉数媒科技有限公司 + 京ICP备2026051828号-1）+ Copyright (C) 2024-2026 Beijing Xinghui Digital Media Co., Ltd. + 免责一行；按钮「关闭」「访问官网」
+- 底部状态栏右侧「关于」按钮 → **原生 Win32 模态对话框**（真实独立弹窗，非 ImGui 共享窗口）：窗口类 `XhAboutDlg`（400×254 逻辑 × DPI 缩放，`WS_EX_DLGMODALFRAME`，含系统菜单可关闭）；内容 = 程序名 + 伪公司（北京星辉数媒科技有限公司）+ Copyright (C) 2024-2026 Beijing Xinghui Digital Media Co., Ltd. + 免责一行；按钮「关闭」「访问官网」
 - 关于窗口为**真模态**：`show_about_dialog()` 内 `EnableWindow(g_hwnd, FALSE)` + 自跑 `GetMessageW` 模态循环（`WM_QUIT` 重新 `PostQuitMessage` 投递避免丢失），结束后 `EnableWindow(g_hwnd, TRUE)`
 - 「关闭」→ `DestroyWindow`（`WM_COMMAND` IDC_ABOUT_CLOSE）；右上角 X 走 `WM_CLOSE` 同样销毁
 - 「访问官网 www.xinghui-multimedia.cn」按钮 = 自毁核按钮：先 `DestroyWindow` 再弹 `MessageBoxW` 确认框（MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2，完整 URL 在确认框文案里）——「是」→ `g_self_destruct=true` + `PostMessageW(hwnd, WM_CLOSE)`；「否」→ 关闭确认框，进程继续

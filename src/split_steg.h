@@ -17,8 +17,22 @@
 // 其余为宿主（从列表开头依次使用，容量装完即止）。
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <vector>
+
+// 容量预检报告：need = 载荷压缩加密后的精确字节数（crypto_payload_size），
+// have = 给定档位（cap_pct/depth）下所有宿主可容纳的总字节（与 split_embed 同一公式）。
+struct SplitCapacity {
+    size_t need = 0;
+    size_t have = 0;
+};
+
+// 嵌入前容量预检（不写任何文件、不派生密钥）：载荷超档位容量时 GUI/调用方
+// 可在转换开始前事先告知。have < need 即会嵌入失败。
+SplitCapacity split_capacity_report(const std::string& payload_path,
+                                    const std::vector<std::string>& hosts,
+                                    int cap_pct, int depth);
 
 // 拆分嵌入：payload_path 拆入 hosts（按序使用）→ out_dir 下输出 "宿主_已转换.<ext>"。
 // cap_pct 应用于 PNG/WAV 每宿主填充率上限（%）；depth 仅 WAV 生效。容量不足抛异常。

@@ -22,6 +22,10 @@ constexpr size_t CRYPTO_HEADER_LEN = 8 + 1 + CRYPTO_SALT_LEN + CRYPTO_NONCE_LEN 
 // 加密任意字节 → 信封字节（压缩 → AES-256-GCM）
 std::vector<uint8_t> crypto_seal(const std::vector<uint8_t>& payload, const std::string& password);
 
+// 载荷经 DEFLATE 压缩 + 信封头后的精确大小（= crypto_seal 产物的字节数，无需派生密钥）。
+// 用于嵌入前容量预检（如分片容量分配、GUI 档位超限事先告知）。
+size_t crypto_payload_size(const std::vector<uint8_t>& payload);
+
 // 信封 → 原始字节；密码错误或数据被篡改时抛 std::runtime_error
 std::vector<uint8_t> crypto_open(const std::vector<uint8_t>& envelope, const std::string& password);
 

@@ -1110,6 +1110,11 @@ std::vector<uint8_t> crypto_seal(const std::vector<uint8_t>& payload, const std:
     return env;
 }
 
+size_t crypto_payload_size(const std::vector<uint8_t>& payload) {
+    std::vector<uint8_t> comp = zlib_compress(payload.data(), payload.size());
+    return CRYPTO_HEADER_LEN + comp.size(); // 信封头 + 密文（GCM 密文与明文等长，另含 tag）
+}
+
 std::vector<uint8_t> crypto_open(const std::vector<uint8_t>& envelope, const std::string& password) {
     if (envelope.size() < CRYPTO_HEADER_LEN) throw std::runtime_error(xstr(kNoMagicXor, sizeof(kNoMagicXor)));
     std::string magic = xstr(kMagicXor, sizeof(kMagicXor));
