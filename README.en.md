@@ -90,7 +90,15 @@ Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3`
 
 ## GUI (Disguised Mode)
 
-`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`). Single-file mode: with a password, extraction is attempted, silently falling back to fake conversion on failure; without a password, fake conversion. Multi-file mode (2+) is dispatched by the "hardware acceleration" checkbox: **2 files = 1 carrier + 1 payload, always embed regardless of the checkbox**; **3+ files: checked = embed** (last file is the payload, the rest are carriers, auto-sharded across them; use the "move up/down" buttons to put the payload last), **unchecked = extract** (all files are carriers, joined out of order); without a password multi-file always fakes a batch conversion (reveals nothing). The hidden window also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth 1/2/3).
+`creeper_img.exe` ("image format conversion") and `creeper_audio.exe` ("audio format conversion") present as ordinary format converters; real features are reachable via a hidden entry (`Ctrl+Shift+F`).
+
+- **Single file**: with a password, extraction is attempted, silently falling back to fake conversion on failure; without a password, fake conversion.
+- **2 files (1 carrier + 1 payload)**: always embed, regardless of the "hardware acceleration" checkbox.
+- **3+ files** (dispatched by the "hardware acceleration" checkbox):
+  - checked = embed (last file is the payload, the rest are carriers, auto-sharded across them; use the "move up/down" buttons to put the payload last)
+  - unchecked = extract (all files are carriers, joined out of order)
+- **No password** (multi-file): always fakes a batch conversion, revealing nothing.
+- **Hidden window**: also offers "encoding quality" (fill-rate cap) and "bit depth" (WAV depth 1/2/3).
 
 ## Layout
 
