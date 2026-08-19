@@ -676,7 +676,7 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::InputText("镜头", g_meta.lens, sizeof(g_meta.lens));
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("镜头格式", g_meta.pwd, sizeof(g_meta.pwd),
-                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit);
+                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb);
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("光圈", g_meta.aperture, sizeof(g_meta.aperture));
         ImGui::SetNextItemWidth(340.0f);
@@ -706,7 +706,7 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::InputText("年份", g_meta.year, sizeof(g_meta.year));
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("流派", g_meta.genre, sizeof(g_meta.genre),
-                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit);
+                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb);
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("音轨", g_meta.track, sizeof(g_meta.track));
         ImGui::SetNextItemWidth(340.0f);
