@@ -149,7 +149,7 @@
 | `../tests/test_cross.py` | B 跨语言交叉验证（优先本地 `../tests/envelope.py`，缺失时回退外部权威路径），可重跑 |
 | `../tests/test_png.py` | C PNG 隐写（15% 上限/--cap/直方图）+ E 检测（has 密码），可重跑 |
 | `../tests/test_mp3.py` | D MP3 隐写（帧头辅助位、无魔数）+ E 检测（has 密码），可重跑 |
-| `../tests/test_wav.py` | W WAV 隐写（16/8-bit、depth 1/2、float 拒绝、15% 上限/--cap/--depth、v1.0 旧格式回退）+ E 检测；宿主缺失时自动生成 |
+| `../tests/test_wav.py` | W WAV 隐写（16/8-bit、depth 1/2/3、float 拒绝、15% 上限/--cap/--depth、v1.0 旧格式回退）+ E 检测；宿主缺失时自动生成 |
 | `../tests/test_gui.ps1` | F GUI 冒烟（ASCII 消息，避免 PS 5.1 编码问题） |
 | `../tests/test_gui_about.ps1` | F2 GUI 关于弹窗真实点击链路（DPI-aware 注入，副本 exe） |
 | `../tests/test_gui_quality.ps1` | F2 GUI 隐藏窗「编码质量」OCR 验证（Ctrl+Shift+F + Windows OCR） |
