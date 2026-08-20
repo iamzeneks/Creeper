@@ -4,16 +4,11 @@
 
 ## What is this?
 
-You have a file you don't want other people to see: an ID scan, a contract, a list of passwords. Put it directly on cloud storage and the filename gives it away; wrap it in an encrypted `.zip`/`.rar` and the archive itself draws attention. Creeper **encrypts** the file and hides it inside an ordinary image, a piece of music, or a WAV audio file — the carrier looks perfectly normal, can still be viewed, shared, and synced to the cloud, while the real content belongs only to whoever knows the password.
+Take a contract, an ID scan, a list of passwords — **encrypt it and hide it inside a photo, a piece of music, or a WAV audio file** — then send it out, drop it in cloud storage, or sync it into your photo album like any ordinary file. The "photo" still opens, still looks normal, and nothing seems off; the real content only comes back out for whoever knows the password.
 
-**It is:**
-- Encrypts any file and losslessly embeds it into a PNG / MP3 / WAV carrier
-- Only the correct password restores the original file; a wrong password is indistinguishable from "nothing hidden"
+What's hidden isn't the content — it's the *fact that anything is hidden at all*. That's steganography.
 
-**It is not:**
-- Not a compression tool — the carrier stays a normal medium, it doesn't shrink into an archive
-- Not cloud storage — it doesn't keep your files for you, it only hides them
-- Not an encrypted messenger — it doesn't transmit anything
+It is **not an "encrypted archive"**. Encrypted zips, encrypted PDFs, and encrypted disks all announce "there's a protected file here" — anyone who sees them instantly knows *something* is there. After Creeper, the carrier just looks like ordinary media — it defends not against "can't open it" but against **"nobody even knows there's something to open"**.
 
 It takes a few minutes to get started — see [Quick Start (CLI)](#quick-start-cli) below.
 
