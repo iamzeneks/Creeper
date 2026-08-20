@@ -11,11 +11,25 @@ In spy movies, secrets don't travel in combination-locked briefcases — they hi
 - Only the correct password restores the original file; a wrong password is indistinguishable from "nothing hidden"
 
 **It is not:**
-- **Not an encrypted archive**. Encrypted zips, encrypted PDFs, and encrypted disks are like hanging a sign on the door that reads "important files in here" — anyone who sees them instantly knows something is there. After Creeper, the carrier is just ordinary media — it defends not against "can't open it" but against **"nobody even knows there's something to open"**.
+- **Not an encrypted archive**. Encrypted zips, encrypted PDFs, and encrypted disks are like hanging a sign on the door that reads "important files in here" — anyone who sees them instantly knows something is there. After Creeper, the carrier is just ordinary media — it defends not against "can't open it" but against **nobody even knowing there's something to open**.
 
-It takes a few minutes to get started — see [Quick Start (CLI)](#quick-start-cli) below.
+It takes a few minutes to get started — see [Quick Start](#quick-start) below.
 
 > Encrypt files with **AES-256-GCM** and embed them losslessly into PNG / MP3 / WAV carriers that show no visible anomalies. The GUI masquerades as a "format converter". Security depends solely on the password (Kerckhoffs's principle).
+
+## Quick Start
+
+Hiding a file and getting it back is two commands:
+
+```bat
+:: Encrypt and embed: 机密.pdf -> output.png (carrier can be PNG/MP3/WAV, output keeps its format)
+creeper_cli embed carrier.png secret.pdf output.png your-password
+
+:: Extract: output.png -> outdir/secret.pdf
+creeper_cli extract output.png outdir your-password
+```
+
+Or just use the disguised GUI: open `creeper_img.exe` (image) or `creeper_audio.exe` (audio), drag files into the list, and press「开始转换」(full instructions in the "GUI" section). More commands — encrypted envelopes, multi-host splitting, payload detection — are in "[CLI Full Usage](#cli-full-usage)" below.
 
 ## Features
 
@@ -73,7 +87,7 @@ python tests\test_cross.py    :: C++ ↔ Python envelope interop (critical)
 
 Requires Python 3 + Pillow + numpy + cryptography. Binary test hosts (`assets/img.png` / `assets/msc.mp3` / `assets/test.wav`) are generated deterministically by `tests/gen_hosts.py` (each suite regenerates its host automatically when missing).
 
-## Quick Start (CLI)
+## CLI Full Usage
 
 ```bat
 :: encrypt
