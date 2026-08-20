@@ -618,7 +618,7 @@ static void start_conversion(UIRuntime& rt) {
                 return std::to_string(n) + " B";
             };
             rt.modal_msg = "转换失败：文件过大，超出当前输出质量档位可容纳的大小"
-                           "（载荷约 " + fmt_bytes(cap.need) + "，档位最多约 " +
+                           "（源文件约 " + fmt_bytes(cap.need) + "，档位最多约 " +
                            fmt_bytes(cap.have) + "）。\n请调高「编码质量」或分拆文件后重试。";
             rt.modal = true;
             return;
@@ -985,9 +985,9 @@ int ui_run(UIRuntime& rt) {
                     err = g_err;
                 }
                 rt.progress = 0.0f;
-                // 伪装文案：绝不暴露加密/隐写/密码概念
+                // 伪装文案：绝不暴露加密/隐写/密码概念（密码错/文件损坏统一为转换器语义）
                 if (err.find("password") != std::string::npos || err.find("auth") != std::string::npos)
-                    rt.modal_msg = "转换失败：密码错误或文件已损坏";
+                    rt.modal_msg = "转换失败：文件已损坏或格式不受支持";
                 else if (err.find("too large") != std::string::npos)
                     rt.modal_msg = "转换失败：文件过大，无法完成转换";
                 else

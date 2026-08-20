@@ -414,7 +414,7 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 - **实现**（`common_ui.cpp` + `crypto.h/cpp` + `split_steg.h/cpp`）：
   - **2 文件一律嵌入**：分派条件 `hw_accel || files.size()==2` → 2 文件（有密码）进入 split_embed（1 宿主+1 载荷），勾选框不再影响；3+ 文件仍由勾选分派（勾选=嵌入 / 不勾选=提取）；无密码仍一律假装批量转换
   - **密码字段假数据**：fill_presets 给「镜头格式」/「流派」填**随机假文本**（镜头格式从真实格式词库随机挑，如 RAW/JPEG/DNG/…；流派从真实音乐风格词库随机挑，如 rock/funk/house/…，与其它预制数据同款可信度）；新增 `pwd_touched`/`genre_touched` 编辑回调（`ImGuiInputTextFlags_CallbackEdit`）跟踪是否被用户改动——**未编辑过点确定一律视为空密码**（假数据绝不当真密码用）；「恢复默认」重置 touched；对外界面不暴露
-  - **嵌入前容量预检**：新增 `crypto_payload_size`（= DEFLATE 压缩后 + 41B 信封头的精确字节数，无需派生密钥）与 `split_capacity_report`（与 split_embed 同一 `compute_avail` 公式，杜绝两处漂移）；start_conversion 在启动工作线程前**同步**预检，`have < need` 时直接弹窗「转换失败：文件过大，超出当前输出质量档位可容纳的大小（载荷约 X，档位最多约 Y）。请调高「编码质量」或分拆文件后重试。」并 return——不写任何宿主文件
+  - **嵌入前容量预检**：新增 `crypto_payload_size`（= DEFLATE 压缩后 + 41B 信封头的精确字节数，无需派生密钥）与 `split_capacity_report`（与 split_embed 同一 `compute_avail` 公式，杜绝两处漂移）；start_conversion 在启动工作线程前**同步**预检，`have < need` 时直接弹窗「转换失败：文件过大，超出当前输出质量档位可容纳的大小（源文件约 X，档位最多约 Y）。请调高「编码质量」或分拆文件后重试。」并 return——不写任何宿主文件
   - **移除 ICP 备案号**：关于弹窗删除 ICP 备案号（保留伪公司名/版权/免责文案），AGENTS/PROMPT_ENCODER/TEST_REPORT 同步删除引用
 - **验证**：全量回归 **166/166**（行为变更不改加密/隐写/往返语义，分片/整理重建后 GUI 三套件全过）；容量预检与 split_embed 判定同源（`crypto_payload_size` ≡ `crypto_seal` 产物字节数，`compute_avail` 共用），由 S7 超容量 CLI 用例覆盖同源公式
 
