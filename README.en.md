@@ -116,10 +116,10 @@ Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3`
 
 ## Documentation
 
-- [User Guide](docs/使用说明书.md) (product manual)
-- [Technical Report](docs/技术报告.md) (design & anti-detection rationale)
-- [Encoder Spec](docs/PROMPT_ENCODER.md) / [Tester Spec](docs/PROMPT_TESTER.md)
-- [Test Report](docs/TEST_REPORT.md) (defects & verification records)
+- [User Guide](docs/使用说明书.en.md) / [使用说明书](docs/使用说明书.md) (product manual)
+- [Technical Report](docs/技术报告.en.md) / [技术报告](docs/技术报告.md) (design & anti-detection rationale)
+- [Encoder Spec](docs/PROMPT_ENCODER.en.md) / [编码任务书](docs/PROMPT_ENCODER.md) · [Tester Spec](docs/PROMPT_TESTER.en.md) / [测试任务书](docs/PROMPT_TESTER.md)
+- [Test Report](docs/TEST_REPORT.en.md) / [测试报告](docs/TEST_REPORT.md) (defects & verification records)
 
 ## License
 

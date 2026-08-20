@@ -1,5 +1,7 @@
 # PROMPT_ENCODER.md — 编码 Agent 任务书
 
+[English](PROMPT_ENCODER.en.md) | **简体中文**
+
 > 你是 **编码 agent**。任务：在项目根目录下实现一个 C++ 隐写工具（伪装成格式转换软件）。
 > 所有规格**必须**严格按本文档执行，不得自行更改文件格式（测试 agent 依赖这些格式做交叉验证）。
 

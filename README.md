@@ -115,10 +115,10 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 
 ## 文档
 
-- [使用说明书](docs/使用说明书.md)（产品手册）
-- [技术报告](docs/技术报告.md)（设计与反检测原理）
-- [编码任务书](docs/PROMPT_ENCODER.md) / [测试任务书](docs/PROMPT_TESTER.md)（规格）
-- [测试报告](docs/TEST_REPORT.md)（缺陷与验证记录）
+- [使用说明书](docs/使用说明书.md) / [User Guide](docs/使用说明书.en.md)（产品手册）
+- [技术报告](docs/技术报告.md) / [Technical Report](docs/技术报告.en.md)（设计与反检测原理）
+- [编码任务书](docs/PROMPT_ENCODER.md) / [Encoder Spec](docs/PROMPT_ENCODER.en.md) · [测试任务书](docs/PROMPT_TESTER.md) / [Tester Spec](docs/PROMPT_TESTER.en.md)（规格）
+- [测试报告](docs/TEST_REPORT.md) / [Test Report](docs/TEST_REPORT.en.md)（缺陷与验证记录）
 
 ## 协议
 

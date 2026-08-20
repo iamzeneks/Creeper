@@ -1,5 +1,7 @@
 # PROMPT_TESTER.md — 算法测试 Agent 任务书
 
+[English](PROMPT_TESTER.en.md) | **简体中文**
+
 > 你是 **测试 agent**。任务：对仓库根目录下已构建的 C++ 隐写工具做全面验证。
 > 前置条件：编码 agent 已完成，`creeper_cli.exe`、`creeper_img.exe`、`creeper_audio.exe` 已构建于项目根目录。若 exe 不存在，先报告"构建缺失"，不要自己改代码。
 

@@ -1,5 +1,7 @@
 # AGENTS.md — creeper（伪装成格式转换器的加密隐写工具）
 
+[English](AGENTS.en.md) | **简体中文**
+
 Windows 上的 C++17 隐写套件：把文件加密后藏进 PNG / MP3 / WAV。权威规格在 `docs/PROMPT_ENCODER.md` / `docs/PROMPT_TESTER.md`（编码/测试任务书），结果与已知缺陷在 `docs/TEST_REPORT.md`，产品文档在 `docs/使用说明书.md` / `docs/技术报告.md`。
 
 ## 构建与测试
