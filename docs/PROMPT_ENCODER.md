@@ -209,10 +209,10 @@ creeper_cli unsplit <outdir> <password> <host...>
 
 **隐藏元数据编辑窗（快捷键 Ctrl+Shift+F 呼出，`ImGui::IsKeyChordPressed(ImGuiMod_Ctrl|ImGuiMod_Shift, ImGuiKey_F)`）**：
 - 窗口标题伪装：img = `EXIF 信息`；audio = `ID3 标签`
-- **img 字段**（每次打开重置为以下预制值）：厂商=`Canon`、型号=`Canon EOS R6 Mark II`、镜头=`RF24-70mm F2.8 L IS USM`、**镜头格式 = `RAW`（假数据）**、光圈=`f/2.8`、快门=`1/250s`、ISO=`400`、白平衡=`自动`、拍摄日期=`2025-06-15 14:32`、分辨率=`5472×3648`、软件=`Adobe Lightroom Classic 13.2`、备注=`Demo photo, all rights reserved.`
-- **audio 字段**：标题=`Midnight Drive`、艺术家=`Neon Harbor`、专辑=`City Lights EP`、年份=`2023`、**流派 = `流行`（假数据）**、音轨=`3`、比特率=`320kbps`、采样率=`44100Hz`、注释=`Licensed under CC BY-NC 4.0`
+- **img 字段**（每次打开重置为以下预制值）：厂商=`Canon`、型号=`Canon EOS R6 Mark II`、镜头=`RF24-70mm F2.8 L IS USM`、**镜头格式 = 随机假格式（真实格式词库随机挑，如 RAW/JPEG/DNG/…）**、光圈=`f/2.8`、快门=`1/250s`、ISO=`400`、白平衡=`自动`、拍摄日期=`2025-06-15 14:32`、分辨率=`5472×3648`、软件=`Adobe Lightroom Classic 13.2`、备注=`Demo photo, all rights reserved.`
+- **audio 字段**：标题=`Midnight Drive`、艺术家=`Neon Harbor`、专辑=`City Lights EP`、年份=`2023`、**流派 = 随机假流派（真实音乐风格词库随机挑，如 rock/funk/house/…）**、音轨=`3`、比特率=`320kbps`、采样率=`44100Hz`、注释=`Licensed under CC BY-NC 4.0`
 - 按钮：`确定`（把密码存入内存全局变量）、`取消`、`恢复默认`（重新填充预制值）
-- 密码字段（镜头格式/流派）用 `ImGui::InputText(..., ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb)`（显示为 ••••，`meta_pwd_cb` 置 `pwd_touched`/`genre_touched`）；**未编辑过（touched=false）时点确定一律视为空密码**——默认假数据绝不当真密码用；「恢复默认」同时重置 touched
+- 密码字段（镜头格式/流派）用 `ImGui::InputText(..., ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb)`（**不带 Password 掩码**，显示明文假文本/乱打字符）：`meta_pwd_cb` 对比渲染前快照（`pwd_shadow`/`genre_shadow`）与编辑后缓冲，diff 出本次差异段——真实字符按位存入 `pwd_real`/`genre_real`，显示差异段整体随机化为乱打字母数字（旁观者只见乱敲，看不到真实输入）；**未编辑过（touched=false）时点确定一律视为空密码**——默认假数据绝不当真密码用；输入框内部最右侧有灰色小叉（文本非空时显示），点击一键清除密码（清空真实缓冲、恢复新的随机假文本、重置 touched）；「恢复默认」同时重置所有字段与 touched
 - 底部下拉：`编码质量`（标准 15% / 高 30% / 超高 50% / 极限 100% → 嵌入填充率上限，等效 CLI `--cap`，MP3 忽略）；audio 另有 `位深`（标准 16bit / 高 24bit / 超清 32bit → WAV 承载深度 1/2/3，等效 CLI `--depth`，MP3 忽略；img 窗无此字段）
 - 说明：确定按钮**不真正修改任何文件**——纯内存存密码，元数据编辑是障眼
 

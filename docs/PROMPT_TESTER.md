@@ -87,6 +87,7 @@
 - 记录窗口是否正常出现（无法截图就记录进程存活）
 - 关于页/自毁：可自动化验证（PowerShell P/Invoke + `EnumWindows` 找类 `XhAboutDlg`，注意 FindWindowW 只能找 top-level、`GetClassNameW` 需 `CharSet=Unicode`）：弹窗打开 → 按钮 `BM_CLICK`（**用 `PostMessage` 异步，`SendMessage` 会阻塞在 MessageBox 模态**）→ `#32770` 确认框出现 → 点「否」进程存活 / 点「是」进程退出且 exe 被删（副本验证）；已按此真实验证全链路，见 TEST_REPORT §12
 - **GUI 专项脚本**：`test_gui_about.ps1`（关于弹窗真实鼠标点击链路 + 副本自毁）；`test_gui_quality.ps1`（Ctrl+Shift+F 打开隐藏窗 → Windows OCR 验证「编码质量」下拉存在）；两个脚本均需 `SetWindowPos(HWND_TOPMOST)` + 窗口中心点击激活绕过前台锁定（否则被遮挡偶发失败）
+- **密码字段伪装验证（GUI-5）**：隐藏窗的「镜头格式」/「流派」默认显示**明文随机假文本**（真实格式/流派词库随机挑，非星号）；用户输入字符后显示层被随机字母数字掩盖（OCR 可断言默认文本非 `***`/`••••`）；输入框内右侧灰色小叉存在且点击可清除；「开始转换」在转换中/点击瞬间不得触发 ImGui 断言（`imgui.cpp` `EndDisabled`）崩溃
 - **二进制抽查**：GUI exe 内不得含 `CREEPER1`/`CRPR`/`CRP`/`creeper` 明文；CLI exe 仅允许 usage 帮助文本含 `creeper_cli`，不得含 `CREEPER1`/`CRPR`/`CRP` 及 `creeper_cli.cpp` 等源文件名
 
 ### G. 健壮性

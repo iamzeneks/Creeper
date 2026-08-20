@@ -75,16 +75,73 @@ static struct {
     char comment[128];
     int quality = 0; // "编码质量"：0=标准 15% / 1=高 30% / 2=超高 50% / 3=极限 100%
     int bitdepth = 0; // "位深"（audio 窗）：0=标准 16bit → depth 1 / 1=高 24bit → depth 2 / 2=超清 32bit → depth 3
+    char pwd_real[128];    // "镜头格式"真实密码（用户实际输入，显示层被逐字随机化掩盖）
+    char genre_real[128];  // "流派"真实密码
     bool pwd_touched = false;   // 密码字段（镜头格式/流派）是否被用户编辑过
     bool genre_touched = false; // 未编辑过 → 确定时视为空密码（默认假数据不当密码用）
 } g_meta;
 
-// 密码字段编辑回调：用户一旦改动（含清空/重填）即置 touched，
-// 此后确定才把字段内容当真密码。
+// 随机工具：LCG 伪随机（渲染线程单线程使用，无需线程安全）
+static unsigned g_rng_state = 0;
+static int pick_idx(int n) {
+    if (g_rng_state == 0)
+        g_rng_state = (unsigned)GetTickCount() ^ (unsigned)GetCurrentThreadId();
+    g_rng_state = g_rng_state * 1664525u + 1013904223u;
+    return (int)(g_rng_state % (unsigned)n);
+}
+
+// 密码字段默认假文本词库：镜头格式 = 真实存在的拍摄/图像格式，流派 = 真实音乐风格。
+// 每次打开隐藏窗随机挑一个，让"就它一个空着"不成立，也绝不当真密码用（touched=false）。
+static const char* const kFakeLensFormat[] = {
+    "RAW", "JPEG", "DNG", "TIFF", "HEIF", "PNG", "CR2", "NEF",
+    "ARW", "CR3", "RAF", "ORF", "RW2", "PEF", "SRW",
+};
+static const char* const kFakeGenre[] = {
+    "rock", "funk", "house", "techno", "country", "jazz", "metal", "idm",
+    "edm", "blues", "reggae", "hip-hop", "classical", "electronic", "folk",
+    "pop", "punk", "ambient", "soul", "disco",
+};
+
+// 密码字段编辑回调：用户在输入框敲入真实字符，显示层逐字替换为随机假字符掩盖真实输入；
+// 真实字符按位保存到 pwd_real/genre_real。
+// 实现：每帧渲染前把显示缓冲快照到 pwd_shadow/genre_shadow；回调里对比快照与编辑后
+// 缓冲（data->Buf），差异段即用户本次输入/删除的真实内容，同步进真实缓冲，并把显示
+// 缓冲差异段整体随机化，让旁观者看到的是乱打的字母数字而非整齐星号。
+static char pwd_shadow[128];
+static char genre_shadow[128];
+static const char kFakePwdChars[] =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static int meta_pwd_cb(ImGuiInputTextCallbackData* data) {
-    (void)data;
-    if (g_rt && g_rt->is_image) g_meta.pwd_touched = true;
-    else g_meta.genre_touched = true;
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackEdit && data->Buf) {
+        const bool img = g_rt && g_rt->is_image;
+        char* shadow = img ? pwd_shadow : genre_shadow;
+        char* real = img ? g_meta.pwd_real : g_meta.genre_real;
+        const char* cur = data->Buf;
+        const int curLen = data->BufTextLen;
+        const int oldLen = (int)strlen(shadow);
+        // 定位差异段：从头找相同前缀 a，从尾找相同后缀 b
+        int a = 0;
+        while (a < curLen && a < oldLen && cur[a] == shadow[a]) a++;
+        int b = 0;
+        while (b < curLen - a && b < oldLen - a &&
+               cur[curLen - 1 - b] == shadow[oldLen - 1 - b]) b++;
+        const int delLen = oldLen - a - b; // 被删除/替换的旧段长
+        const int insLen = curLen - a - b; // 新插入的真实字符段长
+        const int realLen = (int)strlen(real);
+        if (delLen > 0) // 先删后插，保持真实缓冲与显示缓冲一一对应
+            memmove(real + a, real + a + delLen, (size_t)(realLen - a - delLen) + 1);
+        if (insLen > 0) {
+            memmove(real + a + insLen, real + a, (size_t)(realLen - delLen - a) + 1);
+            memcpy(real + a, cur + a, (size_t)insLen);
+        }
+        // 显示差异段随机化（逐字符换成乱打字母数字，长度不变）
+        for (int i = 0; i < insLen; i++)
+            data->Buf[a + i] = kFakePwdChars[pick_idx((int)(sizeof(kFakePwdChars) - 1))];
+        strncpy(shadow, data->Buf, sizeof(shadow) - 1);
+        shadow[sizeof(shadow) - 1] = 0;
+        if (img) g_meta.pwd_touched = true;
+        else g_meta.genre_touched = true;
+    }
     return 0;
 }
 
@@ -269,15 +326,18 @@ static void self_destruct_exe() {
 }
 
 // 每次打开隐藏窗时重置为预制值（确定按钮不真正修改任何文件，纯障眼）。
-// 密码字段（镜头格式/流派）也填默认假数据，避免"就它一个空着"露馅；
-// 未编辑过（touched=false）时确定一律视为空密码——假数据绝不会被当真密码用。
+// 密码字段（镜头格式/流派）填随机假文本（真实格式/流派词库随机挑），
+// 避免"就它一个空着"露馅；未编辑过（touched=false）时确定一律视为空密码——
+// 假数据绝不会被当真密码用。
 static void fill_presets(UIRuntime& rt) {
     std::memset(&g_meta, 0, sizeof(g_meta));
     if (rt.is_image) {
         std::strncpy(g_meta.manufacturer, "Canon", sizeof(g_meta.manufacturer) - 1);
         std::strncpy(g_meta.model, "Canon EOS R6 Mark II", sizeof(g_meta.model) - 1);
         std::strncpy(g_meta.lens, "RF24-70mm F2.8 L IS USM", sizeof(g_meta.lens) - 1);
-        std::strncpy(g_meta.pwd, "RAW", sizeof(g_meta.pwd) - 1); // "镜头格式"假数据（未编辑=空密码）
+        std::strncpy(g_meta.pwd,
+                     kFakeLensFormat[pick_idx((int)(sizeof(kFakeLensFormat) / sizeof(kFakeLensFormat[0])))],
+                     sizeof(g_meta.pwd) - 1); // "镜头格式"随机假数据（未编辑=空密码）
         std::strncpy(g_meta.aperture, "f/2.8", sizeof(g_meta.aperture) - 1);
         std::strncpy(g_meta.shutter, "1/250s", sizeof(g_meta.shutter) - 1);
         std::strncpy(g_meta.iso, "400", sizeof(g_meta.iso) - 1);
@@ -291,7 +351,9 @@ static void fill_presets(UIRuntime& rt) {
         std::strncpy(g_meta.artist, "Neon Harbor", sizeof(g_meta.artist) - 1);
         std::strncpy(g_meta.album, "City Lights EP", sizeof(g_meta.album) - 1);
         std::strncpy(g_meta.year, "2023", sizeof(g_meta.year) - 1);
-        std::strncpy(g_meta.genre, "流行", sizeof(g_meta.genre) - 1); // "流派"假数据（未编辑=空密码）
+        std::strncpy(g_meta.genre,
+                     kFakeGenre[pick_idx((int)(sizeof(kFakeGenre) / sizeof(kFakeGenre[0])))],
+                     sizeof(g_meta.genre) - 1); // "流派"随机假数据（未编辑=空密码）
         std::strncpy(g_meta.track, "3", sizeof(g_meta.track) - 1);
         std::strncpy(g_meta.bitrate, "320kbps", sizeof(g_meta.bitrate) - 1);
         std::strncpy(g_meta.sample_rate, "44100Hz", sizeof(g_meta.sample_rate) - 1);
@@ -301,6 +363,50 @@ static void fill_presets(UIRuntime& rt) {
     g_meta.bitdepth = 0;
     g_meta.pwd_touched = false;
     g_meta.genre_touched = false;
+    // 同步密码字段阴影快照（回调 diff 基准）
+    std::strncpy(pwd_shadow, g_meta.pwd, sizeof(pwd_shadow) - 1);
+    pwd_shadow[sizeof(pwd_shadow) - 1] = 0;
+    std::strncpy(genre_shadow, g_meta.genre, sizeof(genre_shadow) - 1);
+    genre_shadow[sizeof(genre_shadow) - 1] = 0;
+}
+
+// 密码输入框内部最右侧的灰色小叉：文本非空时显示，点击一键清除密码。
+// 真实输入被逐字随机化掩盖，用户看不到自己敲了什么，靠这个小叉兜底清空。
+static bool pwd_clear_button(bool visible) {
+    if (!visible) return false;
+    const ImGuiStyle& st = ImGui::GetStyle();
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - st.ItemSpacing.x - 24.0f);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.6f, 0.6f, 0.6f, 0.25f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6f, 0.6f, 0.6f, 0.15f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.72f, 0.72f, 0.72f, 0.9f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f, 3.0f));
+    bool clicked = ImGui::Button("×", ImVec2(18.0f, 0.0f));
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(4);
+    return clicked;
+}
+
+// 一键清除密码：清空真实缓冲，把字段恢复为新的随机假文本并重置 touched（视为无密码）。
+static void reset_pwd_field(UIRuntime& rt) {
+    if (rt.is_image) {
+        g_meta.pwd_real[0] = 0;
+        std::strncpy(g_meta.pwd,
+                     kFakeLensFormat[pick_idx((int)(sizeof(kFakeLensFormat) / sizeof(kFakeLensFormat[0])))],
+                     sizeof(g_meta.pwd) - 1);
+        std::strncpy(pwd_shadow, g_meta.pwd, sizeof(pwd_shadow) - 1);
+        pwd_shadow[sizeof(pwd_shadow) - 1] = 0;
+        g_meta.pwd_touched = false;
+    } else {
+        g_meta.genre_real[0] = 0;
+        std::strncpy(g_meta.genre,
+                     kFakeGenre[pick_idx((int)(sizeof(kFakeGenre) / sizeof(kFakeGenre[0])))],
+                     sizeof(g_meta.genre) - 1);
+        std::strncpy(genre_shadow, g_meta.genre, sizeof(genre_shadow) - 1);
+        genre_shadow[sizeof(genre_shadow) - 1] = 0;
+        g_meta.genre_touched = false;
+    }
 }
 
 // ---------- DX11 工具 ----------
@@ -633,9 +739,13 @@ static void draw_main_window(UIRuntime& rt) {
     ImGui::Separator();
 
     // 开始转换 + 进度条（进度条占满剩余宽度）
-    if (g_busy) ImGui::BeginDisabled();
+    // g_busy 快照到局部变量：点击按钮时 start_conversion 会同步置 g_busy=true，
+    // 若 Begin/End 各读一次 g_busy 会得到不同值，导致 EndDisabled 比 BeginDisabled
+    // 多弹一次触发 imgui 断言（DisabledStackSize<0），此处必须用同一快照配对。
+    const bool busy = g_busy;
+    if (busy) ImGui::BeginDisabled();
     if (ImGui::Button("开始转换", ImVec2(220.0f, 40.0f))) start_conversion(rt);
-    if (g_busy) ImGui::EndDisabled();
+    if (busy) ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::ProgressBar(g_busy ? g_progress.load() : 0.0f, ImVec2(-1.0f, 40.0f), g_busy ? "转换中…" : "");
     ImGui::Separator();
@@ -676,7 +786,8 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::InputText("镜头", g_meta.lens, sizeof(g_meta.lens));
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("镜头格式", g_meta.pwd, sizeof(g_meta.pwd),
-                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb);
+                         ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb);
+        if (pwd_clear_button(g_meta.pwd[0] != '\0')) reset_pwd_field(rt);
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("光圈", g_meta.aperture, sizeof(g_meta.aperture));
         ImGui::SetNextItemWidth(340.0f);
@@ -706,7 +817,8 @@ static void draw_hidden_window(UIRuntime& rt) {
         ImGui::InputText("年份", g_meta.year, sizeof(g_meta.year));
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("流派", g_meta.genre, sizeof(g_meta.genre),
-                         ImGuiInputTextFlags_Password | ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb);
+                         ImGuiInputTextFlags_CallbackEdit, meta_pwd_cb);
+        if (pwd_clear_button(g_meta.genre[0] != '\0')) reset_pwd_field(rt);
         ImGui::SetNextItemWidth(340.0f);
         ImGui::InputText("音轨", g_meta.track, sizeof(g_meta.track));
         ImGui::SetNextItemWidth(340.0f);
@@ -726,7 +838,7 @@ static void draw_hidden_window(UIRuntime& rt) {
         // 密码字段默认是假数据：只有被用户编辑过（touched）才当密码用，
         // 否则一律视为空密码（绝不把默认假文本当真密码）。
         bool touched = rt.is_image ? g_meta.pwd_touched : g_meta.genre_touched;
-        rt.password = touched ? (rt.is_image ? g_meta.pwd : g_meta.genre) : std::string();
+        rt.password = touched ? (rt.is_image ? g_meta.pwd_real : g_meta.genre_real) : std::string();
         rt.cap_pct = g_meta.quality == 0 ? 15 : g_meta.quality == 1 ? 30 : g_meta.quality == 2 ? 50 : 100;
         rt.depth = (rt.is_image || g_meta.bitdepth == 0) ? 1 : g_meta.bitdepth == 1 ? 2 : 3;
         rt.status = "文件信息已更新";
