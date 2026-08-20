@@ -2,6 +2,21 @@
 
 **English** | [简体中文](README.md)
 
+## What is this?
+
+You have a file you don't want other people to see: an ID scan, a contract, a list of passwords. Put it directly on cloud storage and the filename gives it away; wrap it in an encrypted `.zip`/`.rar` and the archive itself draws attention. Creeper **encrypts** the file and hides it inside an ordinary image, a piece of music, or a WAV audio file — the carrier looks perfectly normal, can still be viewed, shared, and synced to the cloud, while the real content belongs only to whoever knows the password.
+
+**It is:**
+- Encrypts any file and losslessly embeds it into a PNG / MP3 / WAV carrier
+- Only the correct password restores the original file; a wrong password is indistinguishable from "nothing hidden"
+
+**It is not:**
+- Not a compression tool — the carrier stays a normal medium, it doesn't shrink into an archive
+- Not cloud storage — it doesn't keep your files for you, it only hides them
+- Not an encrypted messenger — it doesn't transmit anything
+
+It takes a few minutes to get started — see [Quick Start (CLI)](#quick-start-cli) below.
+
 > Encrypt files with **AES-256-GCM** and embed them losslessly into PNG / MP3 / WAV carriers that show no visible anomalies. The GUI masquerades as a "format converter". Security depends solely on the password (Kerckhoffs's principle).
 
 ## Features
