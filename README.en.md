@@ -4,14 +4,14 @@
 
 ## What is this?
 
-An utterly ordinary photo might be hiding a contract; a song might be hiding a list of passwords. Creeper **encrypts any file and embeds it into a PNG / MP3 / WAV carrier** — the carrier still opens, plays, shares, and syncs to the cloud like normal, and nothing looks off; the real content only comes back out for whoever knows the password.
+In spy movies, secrets don't travel in combination-locked briefcases — they hide in plain sight: a message buried in a newspaper's classified ads, a paper anyone can buy and nobody gives a second look. That's Creeper's line of work: it **encrypts your contract, ID scan, or password list and hides it inside a photo, a song, or a recording**. The photo still gets posted, the music still plays, the cloud still syncs — onlookers see only ordinary files; whatever's hidden inside comes out only for whoever holds the password.
 
 **It is:**
 - Encrypts any file and losslessly embeds it into a PNG / MP3 / WAV carrier
 - Only the correct password restores the original file; a wrong password is indistinguishable from "nothing hidden"
 
 **It is not:**
-- **Not an "encrypted archive"**. Encrypted zips, encrypted PDFs, and encrypted disks all put "there's a protected file here" right out in the open — anyone who sees them instantly knows *something* is there. After Creeper, the carrier is just ordinary media — it defends not against "can't open it" but against **"nobody even knows there's something to open"**.
+- **Not an encrypted archive**. Encrypted zips, encrypted PDFs, and encrypted disks are like hanging a sign on the door that reads "important files in here" — anyone who sees them instantly knows something is there. After Creeper, the carrier is just ordinary media — it defends not against "can't open it" but against **"nobody even knows there's something to open"**.
 
 It takes a few minutes to get started — see [Quick Start (CLI)](#quick-start-cli) below.
 
