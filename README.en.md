@@ -64,13 +64,21 @@ Or just use the disguised GUI: open `creeper_img.exe` (image) or `creeper_audio.
 
 ## Build
 
-Requires [w64devkit](https://github.com/skeeto/w64devkit) (`g++` on PATH):
+Windows: requires [w64devkit](https://github.com/skeeto/w64devkit) (`g++` on PATH):
 
 ```bat
 src\build.bat
 ```
 
 Produces three executables into `res/` (release package, alongside md copies of the guides): `creeper_cli.exe` (console) and `creeper_img.exe` / `creeper_audio.exe` (GUI, `-mwindows`). Third-party deps `imgui/` and `stb/` ship in `third_party/`.
+
+Linux / macOS: requires `g++` or `clang++` (C++17), no third-party libraries:
+
+```sh
+sh build.sh   # picks g++ or clang++ automatically
+```
+
+Produces `build/creeper_cli` (single static binary, no dynamic deps). The CLI shares the exact same source as the Windows build — cross-platform artifacts are byte-compatible and interoperable. Full build tutorial: [CLI Build & Install Guide](docs/CLI_BUILD.md).
 
 ## Tests
 
@@ -130,6 +138,7 @@ Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3`
 ```
 ├─ src/               source (C++17, system libs only)
 │  └─ build.bat       build script (w64devkit g++; outputs exes to res/)
+├─ build.sh           build script (Linux/macOS, g++/clang++; outputs build/creeper_cli)
 ├─ third_party/       imgui / stb (open-source deps, do not modify)
 ├─ docs/              specs, test report, product docs (markdown)
 ├─ res/               release package (gitignored: exes + md copies of the guides)
@@ -145,6 +154,7 @@ Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3`
 - [Technical Report](docs/技术报告.en.md) / [技术报告](docs/技术报告.md) (design & anti-detection rationale)
 - [Encoder Spec](docs/PROMPT_ENCODER.en.md) / [编码任务书](docs/PROMPT_ENCODER.md) · [Tester Spec](docs/PROMPT_TESTER.en.md) / [测试任务书](docs/PROMPT_TESTER.md)
 - [Test Report](docs/TEST_REPORT.en.md) / [测试报告](docs/TEST_REPORT.md) (defects & verification records)
+- [CLI Build & Install Guide](docs/CLI_BUILD.md) / [CLI 编译安装指南](docs/CLI_BUILD.md) (Linux/macOS source build tutorial)
 
 ## License
 

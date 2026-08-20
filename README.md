@@ -64,13 +64,21 @@ creeper_cli extract 输出.png 输出目录 你的密码
 
 ## 构建
 
-需要 [w64devkit](https://github.com/skeeto/w64devkit)（`g++` 在 PATH）：
+Windows：需要 [w64devkit](https://github.com/skeeto/w64devkit)（`g++` 在 PATH）：
 
 ```bat
 src\build.bat
 ```
 
 产出三个可执行文件到 `res/`（发布包，与说明书 md 副本一起）：`creeper_cli.exe`（控制台）、`creeper_img.exe` / `creeper_audio.exe`（GUI，`-mwindows`）。第三方依赖 `imgui/`、`stb/` 已随仓库置于 `third_party/`。
+
+Linux / macOS：需要 `g++` 或 `clang++`（C++17），无第三方库依赖：
+
+```sh
+sh build.sh   # 自动选择 g++ / clang++
+```
+
+产出 `build/creeper_cli`（单一静态二进制，无动态库依赖）。CLI 代码与 Windows 版共用同一套源码，跨平台产物字节级兼容、可互解；详细编译教程见 [CLI 编译安装指南](docs/CLI_BUILD.md)。
 
 ## 测试
 
@@ -129,6 +137,7 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 ```
 ├─ src/               源码（C++17，仅系统库）
 │  └─ build.bat       构建脚本（w64devkit g++，输出 exe 到 res/）
+├─ build.sh           构建脚本（Linux/macOS，g++/clang++，输出 build/creeper_cli）
 ├─ third_party/       imgui / stb（开源第三方，勿修改）
 ├─ docs/              规格任务书、测试报告、产品文档（md 源）
 ├─ res/               发布包（gitignore：exe + 说明书 md 副本）
@@ -144,6 +153,7 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 - [技术报告](docs/技术报告.md) / [Technical Report](docs/技术报告.en.md)（设计与反检测原理）
 - [编码任务书](docs/PROMPT_ENCODER.md) / [Encoder Spec](docs/PROMPT_ENCODER.en.md) · [测试任务书](docs/PROMPT_TESTER.md) / [Tester Spec](docs/PROMPT_TESTER.en.md)（规格）
 - [测试报告](docs/TEST_REPORT.md) / [Test Report](docs/TEST_REPORT.en.md)（缺陷与验证记录）
+- [CLI 编译安装指南](docs/CLI_BUILD.md) / [CLI Build & Install Guide](docs/CLI_BUILD.md)（Linux/macOS 源码编译教程）
 
 ## 协议
 
