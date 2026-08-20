@@ -1,16 +1,18 @@
 // png_steg.cpp — PNG 隐写实现（±1 嵌入 + 直方图配对补偿，无魔数）
 // 位流顺序：像素行主序，每像素 R→G→B；字节内 MSB 优先（bit0 = 字节最高位）。
 // 本文件是唯一定义 STB_IMAGE/STB_IMAGE_WRITE 实现单元的翻译单元。
+#ifdef _WIN32
 #define _CRT_RAND_S // 启用 rand_s（CRT 级安全随机，导入表不含 bcrypt）
+#include <windows.h>
+#endif
 #include "png_steg.h"
 
 #include "crypto.h"
 #include "file_util.h"
 
-#include <windows.h>
-
 #include <cstring>
 #include <cstdlib>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -53,11 +55,21 @@ inline uint8_t pixel_bit(const uint8_t* img, int req, size_t pos) {
 // （直方图阶跃）特征。嵌入完成后，用"未承载数据位"的像素做反向 ±1 移动，
 // 把修改后直方图拉回原图形状（直方图配对平衡）；提取端只读承载位，不受补偿影响。
 
+// 高频随机（±1 方向等）：一次性从系统 CSPRNG 播种的快速 PRNG（mt19937_64）。
+// 单次播种（函数内 static 保证线程安全），避免逐像素构造 random_device 的开销。
+static uint64_t FastRand64() {
+    static std::mt19937_64 gen = [] {
+        uint8_t b[8];
+        secure_random_bytes(b, sizeof(b));
+        uint64_t seed = 0;
+        for (int i = 0; i < 8; i++) seed |= ((uint64_t)b[i]) << (8 * i);
+        return std::mt19937_64(seed);
+    }();
+    return gen();
+}
+
 static uint64_t HistRand() {
-    uint32_t lo = 0, hi = 0;
-    rand_s(&lo);
-    rand_s(&hi);
-    return ((uint64_t)hi << 32) | lo;
+    return FastRand64();
 }
 
 // 随机 ±1 嵌入一位（LSB 相同不动）；返回是否实际修改

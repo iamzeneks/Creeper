@@ -1,16 +1,18 @@
 // wav_steg.cpp — WAV（PCM）无损 LSB 隐写实现（无魔数）
 // 位流顺序：data 区样本顺序（多通道交错，小端），每样本 depth 位（低 depth bit，
 // 样本内 LSB 优先）；字节内 MSB 优先（bit0 = 字节最高位）。RIFF/fmt 区与样本高位零改动。
+#ifdef _WIN32
 #define _CRT_RAND_S // 启用 rand_s（CRT 级安全随机，导入表不含 bcrypt）
+#include <windows.h>
+#endif
 #include "wav_steg.h"
 
 #include "crypto.h"
 #include "file_util.h"
 
-#include <windows.h>
-
 #include <cstring>
 #include <cstdlib>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -115,11 +117,20 @@ inline void write_sample(uint8_t* p, int bits, int v) {
 }
 
 // 随机 ±1 修改样本 LSB（LSB matching；边界单方向）；返回是否实际修改
+// 高频随机（±1 方向等）：一次性从系统 CSPRNG 播种的快速 PRNG（mt19937_64）
+static uint64_t FastRand64() {
+    static std::mt19937_64 gen = [] {
+        uint8_t b[8];
+        secure_random_bytes(b, sizeof(b));
+        uint64_t seed = 0;
+        for (int i = 0; i < 8; i++) seed |= ((uint64_t)b[i]) << (8 * i);
+        return std::mt19937_64(seed);
+    }();
+    return gen();
+}
+
 static uint64_t SampRand() {
-    uint32_t lo = 0, hi = 0;
-    rand_s(&lo);
-    rand_s(&hi);
-    return ((uint64_t)hi << 32) | lo;
+    return FastRand64();
 }
 inline bool set_sample_bit_rand(uint8_t* data, int bits, size_t sample_idx, uint8_t bit) {
     uint8_t* p = data + sample_idx * ((size_t)bits / 8);

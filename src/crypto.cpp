@@ -1,15 +1,20 @@
 // crypto.cpp — 加密信封实现（纯软件，无系统加密库调用）
 // 流程：payload → DEFLATE 压缩 → AES-256-GCM 加密
 //   - KDF：PBKDF2-HMAC-SHA256，600,000 次迭代，派生 32 字节密钥
-//   - 加密：内置 AES-256（S-box 按定义生成）+ GCM（GHASH），随机 salt/nonce（rand_s）
+//   - 加密：内置 AES-256（S-box 按定义生成）+ GCM（GHASH），随机 salt/nonce（安全随机源）
 // 与 envelope.py 互解：压缩流为标准 RFC1950 zlib 格式（Python zlib 模块可直接解压）。
 // 说明：本文件不再导入 bcrypt.dll——SHA-256/HMAC/PBKDF2/AES/GCM 全部为内置实现，
 // 避免"调用系统加密库"的可疑行为（抽检场景）。算法均为标准实现，字节级兼容 Python
 // cryptography 库（test_cross 依赖）。
+#ifdef _WIN32
 #define _CRT_RAND_S // 启用 rand_s（CRT 级安全随机，导入表不含 bcrypt）
+#endif
 #include "crypto.h"
+#include "file_util.h"
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 #include <algorithm>
 #include <cstring>
@@ -1063,16 +1068,9 @@ std::vector<uint8_t> gcm_decrypt(const uint8_t* key, const uint8_t* nonce, const
     return plain;
 }
 
-// 安全随机数（rand_s：CRT 内部系统 RNG，导入表无 bcrypt.dll）
+// 安全随机数：Windows 用 rand_s（CRT 内部系统 RNG，导入表无 bcrypt.dll）；POSIX 读 /dev/urandom
 void random_bytes(uint8_t* out, size_t n) {
-    while (n) {
-        unsigned int v = 0;
-        if (rand_s(&v) != 0) throw std::runtime_error("rand_s failed");
-        size_t take = std::min<size_t>(n, sizeof(v));
-        std::memcpy(out, &v, take);
-        out += take;
-        n -= take;
-    }
+    secure_random_bytes(out, n);
 }
 
 } // namespace

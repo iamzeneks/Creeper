@@ -19,8 +19,6 @@
 #include "split_steg.h"
 #include "wav_steg.h"
 
-#include <windows.h>
-
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -28,6 +26,10 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace {
 
@@ -79,17 +81,23 @@ int parse_cap(int argc, const std::vector<std::string>& args, int base) {
 
 } // namespace
 
-int main() {
-    // 用 CommandLineToArgvW 拿真正的 Unicode 参数，再转 UTF-8（控制台代码页无关）
+int main(int argc0, char** argv0) {
+    // Windows：用 CommandLineToArgvW 拿真正的 Unicode 参数，再转 UTF-8（控制台代码页无关）；
+    // POSIX（Linux/macOS）：argv 本就是 UTF-8，直接用。
     int argc = 0;
+    std::vector<std::string> args;
+#ifdef _WIN32
     LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!wargv) {
         fprintf(stderr, "error: failed to parse command line\n");
         return 1;
     }
-    std::vector<std::string> args;
     for (int i = 0; i < argc; i++) args.push_back(utf16_to_utf8(wargv[i]));
     LocalFree(wargv);
+#else
+    argc = argc0;
+    args.assign(argv0, argv0 + argc);
+#endif
 
     if (argc < 2) {
         usage();
