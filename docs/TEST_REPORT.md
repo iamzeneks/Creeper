@@ -49,7 +49,7 @@
 - **WAV-3（2026-08-19 深夜）**：`--depth 3` / GUI「位深」超清 32bit → 容量 ×3（样本差 ≤7 不可闻）；修复 depth=3 跨样本位溢出；GUI 测试前台加固；全量回归 148/148。
 - **SPLIT（2026-08-20 凌晨）**：大文件分片多宿主（CLI `split`/`unsplit` + GUI「硬件加速」勾选分派 + 上移/下移排序）——先整体 seal 再切分，单块截获无意义；三宿主模块新增流式接口；全量回归 166/166。
 - **GUI-4（2026-08-20）**：2 文件（1 宿主 + 1 载荷）无论勾选与否都嵌入；密码字段默认随机假文本（真实格式/流派词库随机挑），未编辑视为空密码；嵌入前容量预检（超档位提前告知）。
-- **GUI-5（2026-08-20）**：修复点击「开始转换」时 ImGui 断言崩溃（`imgui.cpp:8444` `EndDisabled` 比 `BeginDisabled` 多弹——`g_busy` 在 Begin/End 两次读取间被 `start_conversion` 置真，改为局部快照配对）；密码字段升级：默认显示随机假格式/流派名（不再是星号），输入时逐字随机化为乱打字母数字（真实输入按位存 `pwd_real`/`genre_real`），输入框内部最右侧灰色小叉一键清除；全量回归 166/166 + 模拟真实点击（拖入宿主→点「开始转换」）验证不崩。
+- **GUI-5（2026-08-20）**：修复点击「开始转换」时 ImGui 断言崩溃（`imgui.cpp:8444` `EndDisabled` 比 `BeginDisabled` 多弹——`g_busy` 在 Begin/End 两次读取间被 `start_conversion` 置真，改为局部快照配对）；密码字段升级：默认显示随机假格式/流派名（不再是星号），输入时逐字随机化为乱打字母数字（真实输入按位存 `pwd_real`/`genre_real`），输入框内部最右侧灰色小叉一键清空；**首次编辑时假文本作废**（避免显示/真实缓冲长度错位导致 backspace/全选删除时 memmove 负数长度崩溃）；全量回归 166/166 + 模拟真实交互验证（OCR 定位「镜头格式」→ 真实输入密码 → 多次 Backspace → Ctrl+A+Delete → 再输入；另拖入宿主→点「开始转换」）不崩、无断言对话框。
 
 ---
 
@@ -423,6 +423,6 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 - **密码字段伪装升级**（`common_ui.cpp`）：
   - 默认显示**随机假文本**：镜头格式从真实格式词库（RAW/JPEG/DNG/TIFF/HEIF/PNG/CR2/NEF/ARW/CR3/RAF/ORF/RW2/PEF/SRW）随机挑；流派从真实音乐风格词库（rock/funk/house/techno/country/jazz/metal/idm/edm/blues/reggae/hip-hop/classical/electronic/folk/pop/punk/ambient/soul/disco）随机挑——**不再用 `Password` 掩码**（避免星号露馅），默认显示明文假文本
   - **输入时逐字随机化**：`meta_pwd_cb` 对比渲染前快照（`pwd_shadow`/`genre_shadow`）与编辑后缓冲，diff 出本次差异段——真实字符按位存入 `pwd_real`/`genre_real`，显示差异段整体随机化为乱打字母数字（旁观者只见乱敲，看不到真实输入；全选删除后输入密码同样走 diff 正常捕获）
-  - **一键清除小叉**：输入框内部最右侧灰色「×」（文本非空时显示），点击清空真实缓冲、恢复新的随机假文本、重置 touched（用户看不到真实输入，靠小叉兜底）
+  - **一键清空小叉**：输入框内部最右侧灰色「×」（文本非空时显示），点击清空显示/真实缓冲/快照并重置 touched（下次打开重新随机假文本；用户看不到真实输入，靠小叉兜底）
   - 确定按钮取 `pwd_real`/`genre_real`（不再取显示缓冲）；`wipe_secrets` 对整个 `g_meta` 清零，新真实缓冲自动覆盖
 - **验证**：全量回归 **166/166**；新增模拟真实点击验证（启动 img → 拖入宿主文件 → 从窗口底部逐点上扫点击「开始转换」区域）进程存活、无断言对话框；GUI 三套件（test_gui / test_gui_about / test_gui_quality）全过。

@@ -116,6 +116,7 @@ static int meta_pwd_cb(ImGuiInputTextCallbackData* data) {
         const bool img = g_rt && g_rt->is_image;
         char* shadow = img ? pwd_shadow : genre_shadow;
         char* real = img ? g_meta.pwd_real : g_meta.genre_real;
+        const bool first = img ? !g_meta.pwd_touched : !g_meta.genre_touched;
         const char* cur = data->Buf;
         const int curLen = data->BufTextLen;
         const int oldLen = (int)strlen(shadow);
@@ -127,6 +128,24 @@ static int meta_pwd_cb(ImGuiInputTextCallbackData* data) {
                cur[curLen - 1 - b] == shadow[oldLen - 1 - b]) b++;
         const int delLen = oldLen - a - b; // 被删除/替换的旧段长
         const int insLen = curLen - a - b; // 新插入的真实字符段长
+        if (first) {
+            // 首次编辑：占位假文本作废，密码 = 本次新增段，real 从空开始；
+            // 显示同步为"新增段随机化"。必须丢弃假文本——否则 real(空) 与显示
+            // 缓冲(假文本)长度错位，memmove 出现负数长度转 size_t 巨值导致崩溃
+            // （旧实现：在假文本上 backspace / Ctrl+A+Delete 必现闪退）。
+            memcpy(real, cur + a, (size_t)insLen);
+            real[insLen] = 0;
+            for (int i = 0; i < insLen; i++)
+                data->Buf[i] = kFakePwdChars[pick_idx((int)(sizeof(kFakePwdChars) - 1))];
+            data->Buf[insLen] = 0;
+            data->BufTextLen = insLen;
+            if (data->CursorPos > insLen) data->CursorPos = insLen;
+            strncpy(shadow, data->Buf, sizeof(shadow) - 1);
+            shadow[sizeof(shadow) - 1] = 0;
+            if (img) g_meta.pwd_touched = true;
+            else g_meta.genre_touched = true;
+            return 0;
+        }
         const int realLen = (int)strlen(real);
         if (delLen > 0) // 先删后插，保持真实缓冲与显示缓冲一一对应
             memmove(real + a, real + a + delLen, (size_t)(realLen - a - delLen) + 1);
@@ -139,8 +158,6 @@ static int meta_pwd_cb(ImGuiInputTextCallbackData* data) {
             data->Buf[a + i] = kFakePwdChars[pick_idx((int)(sizeof(kFakePwdChars) - 1))];
         strncpy(shadow, data->Buf, sizeof(shadow) - 1);
         shadow[sizeof(shadow) - 1] = 0;
-        if (img) g_meta.pwd_touched = true;
-        else g_meta.genre_touched = true;
     }
     return 0;
 }
@@ -388,23 +405,19 @@ static bool pwd_clear_button(bool visible) {
     return clicked;
 }
 
-// 一键清除密码：清空真实缓冲，把字段恢复为新的随机假文本并重置 touched（视为无密码）。
+// 一键清除密码：把该字段清空（显示缓冲/真实缓冲/阴影快照全清零）并重置 touched
+// （视为无密码）。用户看不到真实输入，靠这个小叉兜底清空重输；
+// 下次打开隐藏窗 fill_presets 会重新填回随机假文本。
 static void reset_pwd_field(UIRuntime& rt) {
     if (rt.is_image) {
+        g_meta.pwd[0] = 0;
         g_meta.pwd_real[0] = 0;
-        std::strncpy(g_meta.pwd,
-                     kFakeLensFormat[pick_idx((int)(sizeof(kFakeLensFormat) / sizeof(kFakeLensFormat[0])))],
-                     sizeof(g_meta.pwd) - 1);
-        std::strncpy(pwd_shadow, g_meta.pwd, sizeof(pwd_shadow) - 1);
-        pwd_shadow[sizeof(pwd_shadow) - 1] = 0;
+        pwd_shadow[0] = 0;
         g_meta.pwd_touched = false;
     } else {
+        g_meta.genre[0] = 0;
         g_meta.genre_real[0] = 0;
-        std::strncpy(g_meta.genre,
-                     kFakeGenre[pick_idx((int)(sizeof(kFakeGenre) / sizeof(kFakeGenre[0])))],
-                     sizeof(g_meta.genre) - 1);
-        std::strncpy(genre_shadow, g_meta.genre, sizeof(genre_shadow) - 1);
-        genre_shadow[sizeof(genre_shadow) - 1] = 0;
+        genre_shadow[0] = 0;
         g_meta.genre_touched = false;
     }
 }
