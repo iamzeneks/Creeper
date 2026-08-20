@@ -433,5 +433,5 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 
 - **背景**：用户按标准流程 embed（2 文件：host.wav + tetris.mp3）→ 清空列表 → 单文件加回 `host_已转换.wav` + 同一密码 → 提取得到的是 `host_已转换_转换.wav`（即伪转换产物），不是解出的载荷。
 - **根因（BUG，已修复）**：GUI **嵌入一律走 `split_embed`**（`common_ui.cpp`，2 文件 `files.size()==2` 也走它）→ 产物是**分片块格式**（`头 + env(magic+index+count+chunk_len+chunk)`）；但单文件提取走的是**普通 `wav_extract`/`mp3_extract`/`png_extract`**（`audio_app.cpp`/`img_app.cpp` 的 extract_fn）——普通解析把分片块头当成信封内容 → GCM 认证失败 → 抛错 → `start_conversion` 静默回退伪转换 → 产出 `host_已转换_转换.wav`。即"自己嵌入的自己解不开"。
-- **修复**：`audio_extract` / `img_extract` 改为**先 `split_extract({host})`**（`split_extract` 支持 count=1 单块：按块内编号拼接 → 整体信封 → GCM 认证还原），失败再回退普通提取（兼容 CLI `embed` 的普通信封），都不行才报错 → 回退伪转换。伪装语义不变（密码错/无载荷仍与"转换失败"不可区分）。
+- **修复**：`audio_extract` / `img_extract` 改为**先 `split_extract({host})`**（`split_extract` 支持 count=1 单块：按块内编号拼接 → 整体信封 → GCM 认证还原），失败再回退普通提取（兼容 CLI `embed` 的普通信封），都不行才报错 → 回退伪转换。伪装文案：密码错/GCM 认证失败/无载荷统一弹「转换失败：编码错误」（密码错与无载荷仍不可区分，但不暴露隐写概念），真损坏/格式不支持弹「转换失败：文件已损坏或格式不受支持」。
 - **验证**：全量回归 **170/170**（split 套件新增 S11：单宿主 split 往返还原一致 + 单宿主分片文件普通 extract 必须失败）；复现用例经 CLI 等价路径（split 1 宿主 → unsplit 1 宿主）还原字节一致；GUI 三套件全过。

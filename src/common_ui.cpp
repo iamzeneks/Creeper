@@ -985,13 +985,17 @@ int ui_run(UIRuntime& rt) {
                     err = g_err;
                 }
                 rt.progress = 0.0f;
-                // 伪装文案：绝不暴露加密/隐写/密码概念（密码错/文件损坏统一为转换器语义）
-                if (err.find("password") != std::string::npos || err.find("auth") != std::string::npos)
-                    rt.modal_msg = "转换失败：文件已损坏或格式不受支持";
+                // 伪装文案：绝不暴露加密/隐写/密码概念。
+// 密码错 / GCM 认证失败 / 无载荷（GUI 分片产物密码错即"no payload"）→ 提示「编码错误」
+// （旁观者只见普通转换器报错，使用者能据此猜到编码/密码信息不对）；
+// 真正损坏或格式不受支持 → 正常说明。
+                if (err.find("password") != std::string::npos || err.find("auth") != std::string::npos
+                    || err.find("no payload") != std::string::npos)
+                    rt.modal_msg = "转换失败：编码错误";
                 else if (err.find("too large") != std::string::npos)
                     rt.modal_msg = "转换失败：文件过大，无法完成转换";
                 else
-                    rt.modal_msg = "转换失败：文件处理出错，请检查源文件是否有效";
+                    rt.modal_msg = "转换失败：文件已损坏或格式不受支持";
                 rt.modal = true;
             }
         }

@@ -204,7 +204,7 @@ creeper_cli unsplit <outdir> <password> <host...>
 - **3+ files in the list**: with password, dispatched by the 「硬件加速」checkbox — **checked = encrypted embedding** (last = payload, rest = hosts, sharded embedding), **unchecked = decrypted extraction** (all = hosts, order-independent concatenation by block numbering); no password -> always pretend batch conversion (nothing exposed, checkbox ineffective)
 - **Capacity pre-check before embedding**: before encrypted embedding, synchronously call `split_capacity_report` (same formula as split_embed) — when the payload exceeds the capacity limit of the current tier (encoding quality / bit depth), pop up before conversion starts: 「转换失败：文件过大，超出当前输出质量档位可容纳的大小（源文件约 X，档位最多约 Y）。请调高「编码质量」或分拆文件后重试。」, without writing any host file
 - extract without password -> pop up 「转换失败：请先编辑文件信息」(does not expose the steganography concept)
-- wrong password / no payload / corrupted file -> uniformly pop up 「转换失败：文件已损坏或格式不受支持」(ordinary converter failure text, **never the word "password"**)
+- wrong password / no payload / corrupted file -> pop up 「转换失败：编码错误」("conversion failed: encoding error" — ordinary converter failure text, lets the user infer their encoding/password info is wrong, **never the word "password"**); genuine corruption / unsupported format -> pop up 「转换失败：文件已损坏或格式不受支持」
 - embed reports `too large` (fill-rate exceeded) -> pop up 「转换失败：文件过大，无法完成转换」(does not expose the steganography concept)
 
 **Hidden metadata edit window (invoked by hotkey Ctrl+Shift+F, `ImGui::IsKeyChordPressed(ImGuiMod_Ctrl|ImGuiMod_Shift, ImGuiKey_F)`)**:
