@@ -213,7 +213,7 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
   - **PNG 无魔数头**：头 = `name_len(2B BE) + name(UTF-8) + env_len(4B BE) + seed(4B)`（去 `CRPR` 4B）；`png_has_payload(path, password)` 完整解析 + 散布重放 + GCM 认证，密码错/无载荷/伪造数据一律 false（误报 2^-128）；`png_embed(..., fill_limit_pct=15)` 新增**填充率上限**（默认 15%，超限报 `payload too large: exceeds N%...`，`0` = 不限）
   - **MP3 无魔数位流**：位流 = `name_len(16bit) | name | env_len(32bit) | env`（去 `CRP` 24bit，仍填充到 3 的倍数）；`mp3_has_payload(path, password)` 同构认证判定
   - **CLI**：`has <host> <password>`（argc==4，密码错/无载荷均输出 0）；`embed ... [--cap N]`（N=0..100 默认 15，仅 PNG 生效）；usage 同步更新
-  - **GUI**：删除 `has_payload_fn` 预检（不再有"一次检测"路径）；单文件+有密码 → 直接尝试提取，**失败静默回退伪转换**（绝不暴露"有载荷"信息）；embed 报 too large → 弹「转换失败：文件过大，无法完成转换」
+  - **GUI**：删除 `has_payload_fn` 预检（不再有"一次检测"路径）；单文件+有密码 → 直接尝试提取（**先 `split_extract({host})`，失败回退普通提取**，GUI-6 修复，见下），均失败静默回退伪转换（绝不暴露"有载荷"信息）；embed 报 too large → 弹「转换失败：文件过大，无法完成转换」
   - **字符串混淆**：信封 magic `CREEPER1`、信封错误消息、自删 bat 名（初版 `creeper_selfdel.bat`，NO-MAGIC-2 后更名 `msimg32_upd.bat`）、窗口类名 `CreeperImgApp`/`CreeperAudioApp` 全部改为 XOR 0x55 字节数组 + 运行时 `xstr()` 还原；CLI 源文件 `creeper_cli.cpp` 改名 `cli_main.cpp`（源文件名不再进二进制）
 - **开发中发现并修复的问题**：
   1. **15% 上限初版测试误判**：测试初稿按"15% × 容量字节"错误理解为 28.8KB 载荷即超限（实际 15% × 1,536,000B = 230,400B），导致 30KB 用例预期失败；修正为 250KB 超限 / 200KB 通过，二分实测 218,476B，符合膨胀后预期
@@ -405,8 +405,8 @@ powershell -ExecutionPolicy Bypass -File tests\test_gui.ps1
 ### SPLIT（已实现，已验证）：大文件分片多宿主
 
 - **实现**（`split_steg.h/cpp` + 三模块新增接口）：先整体 `crypto_seal`（一个 AES-GCM 信封）再切分密文——单块无法认证（提取端「无载荷」），收齐所有块按 index 拼接后整体 GCM 认证还原，单宿主截获无意义；每宿主隐写流 = 标准头（name_len+name+env_len，WAV 前多 1B depth）+ env = `magic(4B) + index(2B BE) + count(2B BE) + chunk_len(4B BE) + chunk`，magic = `crypto_steg_seed(password, "creeper-split")` 大端（密码派生无明文特征）；容量分配 = 每宿主 `floor(容量×填充率) − 头开销` 顺序填装（MP3 100%，辅助位方案无填充率概念）；输出 `宿主_已转换.ext`
-- **验证**：`test_split.py` **18/18**（S1 2PNG+WAV 三块往返、S2 乱序拼接、S3 PNG+WAV+MP3 混合、S4 缺块报 missing、S5 密码错失败、S6 单块 extract 失败 + has=0、S7 超总和容量报错、S8 depth2 分片、S9 空密码、S10 普通单宿主文件 unsplit 视为无载荷）；全量回归 **166/166**
-- **GUI**：多文件（2+）有密码时由「硬件加速」勾选分派——勾选=嵌入（最后=载荷），不勾选=提取（全宿主）；「上移」「下移」按钮排序；无密码一律假装批量转换（不暴露）；单文件逻辑零变化
+- **验证**：`test_split.py` **22/22**（S1 2PNG+WAV 三块往返、S2 乱序拼接、S3 PNG+WAV+MP3 混合、S4 缺块报 missing、S5 密码错失败、S6 单块 extract 失败 + has=0、S7 超总和容量报错、S8 depth2 分片、S9 空密码、S10 普通单宿主文件 unsplit 视为无载荷、**S11 单宿主 split 往返还原一致 + 单宿主分片文件普通 extract 必须失败（GUI-6 回归）**）；全量回归 **170/170**
+- **GUI**：多文件（2+）有密码时由「硬件加速」勾选分派——勾选=嵌入（最后=载荷），不勾选=提取（全宿主）；「上移」「下移」按钮排序；无密码一律假装批量转换（不暴露）；单文件提取改走分片还原（GUI-6 修复：先 `split_extract({host})`，失败回退普通提取）
 
 ### GUI-4（已实现，已验证）：2 文件一律嵌入 + 密码字段假数据 + 嵌入前容量预检
 
