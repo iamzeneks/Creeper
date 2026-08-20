@@ -1,4 +1,4 @@
-# PROMPT_ENCODER.md — Encoding Agent Task Specification
+# Creeper — Encoding Agent Task Specification
 
 **English** | [简体中文](PROMPT_ENCODER.md)
 

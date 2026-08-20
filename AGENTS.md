@@ -1,4 +1,4 @@
-# AGENTS.md — creeper（伪装成格式转换器的加密隐写工具）
+# Creeper — Agent 指南
 
 [English](AGENTS.en.md) | **简体中文**
 

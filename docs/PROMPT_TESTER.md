@@ -1,4 +1,4 @@
-# PROMPT_TESTER.md — 算法测试 Agent 任务书
+# Creeper — 算法测试 Agent 任务书
 
 [English](PROMPT_TESTER.en.md) | **简体中文**
 

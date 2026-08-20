@@ -1,4 +1,4 @@
-# AGENTS.md — creeper (an encrypted stego tool disguised as a format converter)
+# Creeper — Agent Guide
 
 **English** | [简体中文](AGENTS.md)
 

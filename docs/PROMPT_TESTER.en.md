@@ -1,4 +1,4 @@
-# PROMPT_TESTER.md — Algorithm Testing Agent Task Brief
+# Creeper — Algorithm Testing Agent Task Specification
 
 **English** | [简体中文](PROMPT_TESTER.md)
 
