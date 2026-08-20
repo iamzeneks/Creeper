@@ -110,7 +110,7 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 ├─ assets/            测试宿主（gitignore；tests/gen_hosts.py 生成）
 ├─ tests/             测试套件（Python / PowerShell）
 ├─ .github/           GitHub Actions CI（构建 + 非 GUI 套件）
-├─ README.md / README.en.md / LICENSE / AGENTS.md
+├─ README.md / README.en.md / LICENSE / THIRD_PARTY_LICENSES.md / AGENTS.md
 ```
 
 ## 文档
@@ -123,5 +123,7 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 ## 协议
 
 [BSD 3-Clause](LICENSE)。仅用于合法目的（隐私保护、数据备份、媒体元数据隐藏等）；请遵守所在司法辖区的法律。
+
+本软件包含第三方开源组件：Dear ImGui（MIT）、stb_image / stb_image_write（MIT / Public Domain 双许可），声明详见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
 
 Copyright © 2026, Creeper Project Authors. All rights reserved.
