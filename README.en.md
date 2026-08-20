@@ -4,7 +4,7 @@
 
 ## What is this?
 
-In spy movies, secrets don't travel in combination-locked briefcases — they hide in plain sight: a message buried in a newspaper's classified ads, a paper anyone can buy and nobody gives a second look. That's Creeper's line of work: it **encrypts your contract, ID scan, or password list and hides it inside a photo, a song, or a recording**. The photo still gets posted, the music still plays, the cloud still syncs — onlookers see only ordinary files; whatever's hidden inside comes out only for whoever holds the password.
+In spy movies, secrets don't travel in combination-locked briefcases — they hide in a newspaper's classified ads, a paper anyone can buy and nobody gives a second look. Creeper does the same: it **encrypts your contract, ID scan, or password list and hides it inside a photo, a song, or a recording**. To look at them, they're just ordinary files — they open, play, and sync to the cloud without a hitch; whatever's hidden inside comes out only for whoever knows the password.
 
 **It is:**
 - Encrypts any file and losslessly embeds it into a PNG / MP3 / WAV carrier
