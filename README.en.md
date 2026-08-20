@@ -128,3 +128,17 @@ Options: `--cap N` (fill-rate cap 0–100, default 15, PNG/WAV); `--depth 1|2|3`
 This software includes third-party open-source components: Dear ImGui (MIT) and stb_image / stb_image_write (MIT / Public Domain dual-licensed); see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 Copyright © 2026, Creeper Project Authors. All rights reserved.
+
+## Screenshots
+
+Main window (disguised as an ordinary "format converter"):
+
+![Main window](assets/Main%20Page.png)
+
+Hidden window (summoned by `Ctrl+Shift+F`; the password hides in the "镜头格式" field):
+
+![Hidden window](assets/EXIF.png)
+
+About window:
+
+![About window](assets/About.png)

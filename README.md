@@ -127,3 +127,17 @@ creeper_cli unsplit 输出目录 你的密码 载体3.mp3 载体1.png 载体2.wa
 本软件包含第三方开源组件：Dear ImGui（MIT）、stb_image / stb_image_write（MIT / Public Domain 双许可），声明详见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
 
 Copyright © 2026, Creeper Project Authors. All rights reserved.
+
+## 界面展示
+
+主界面（伪装为普通"格式转换器"）：
+
+![主界面](assets/Main%20Page.png)
+
+隐藏窗（`Ctrl+Shift+F` 呼出，密码藏于"镜头格式"字段）：
+
+![隐藏窗](assets/EXIF.png)
+
+关于窗口：
+
+![关于窗口](assets/About.png)
