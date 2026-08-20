@@ -13,8 +13,6 @@ In spy movies, secrets don't travel in combination-locked briefcases — they hi
 **It is not:**
 - **Not an encrypted archive**. Encrypted zips, encrypted PDFs, and encrypted disks are like hanging a sign on the door that reads "important files in here" — anyone who sees them instantly knows something is there. After Creeper, the carrier is just ordinary media — it defends not against "can't open it" but against **nobody even knowing there's something to open**.
 
-It takes a few minutes to get started — see [Quick Start](#quick-start) below.
-
 > Encrypt files with **AES-256-GCM** and embed them losslessly into PNG / MP3 / WAV carriers that show no visible anomalies. The GUI masquerades as a "format converter". Security depends solely on the password (Kerckhoffs's principle).
 
 ## Quick Start
