@@ -17,7 +17,8 @@
   - Full regression after WAV-3 three-tier depth + GUI test hardening: 2026-08-19 25:30–26:10
   - Full regression after SPLIT large-file sharding multi-carrier: 2026-08-20 02:00–02:40
   - Full regression after GUI-5 assertion fix + password-field disguise upgrade: 2026-08-20 17:55–18:10
-- **System under test**: `creeper_cli.exe` / `creeper_img.exe` / `creeper_audio.exe` at the repository root (built 2026-08-20 17:56; implemented features are listed by stage under "Conclusion" below)
+  - Full regression after "clear list" resets sticky state (hardware-accel checkbox / status text): 2026-08-20 18:20
+- **System under test**: `creeper_cli.exe` / `creeper_img.exe` / `creeper_audio.exe` at the repository root (built 2026-08-20 18:22; implemented features are listed by stage under "Conclusion" below)
 - **Environment**: Windows 10.0.26200 x64; Python 3.14.4 + Pillow 12.2.0 + numpy 2.4.4 + cryptography 49.0.0
 - **Test materials**: `img.png` (RGBA 2560×1600, 8.8MB), `msc.mp3` (20MB, with built-in ID3v2.3 tag 30981B / 11 frames / 306B padding), `test.wav` (44.1kHz/16bit/stereo 60s synthetic audio, 10.1MB, generation script in test_wav.py comments), `src.png` (RGBA 30000×5000, 235MB)
 - **Byte comparison method**: Python byte-level compare + SHA-256 digest (`fc /b` collides with PowerShell's `fc` alias, so not used; the task spec allows either)
@@ -425,4 +426,5 @@ Temp files cleaned (`../tests/tmp/` emptied, report and result logs retained).
   - **Per-character masking while typing**: `meta_pwd_cb` diffs the pre-render snapshot (`pwd_shadow`/`genre_shadow`) against the edited buffer, locating the changed segment — real characters are stored bit-by-bit into `pwd_real`/`genre_real`, and the displayed changed segment is fully randomized into random alphanumerics (bystanders only see random typing, never the real input; select-all-then-type also goes through diff and is captured correctly)
   - **One-click clear ✕**: a small grey「×」at the far right inside the input box (shown when text is non-empty) zeros the display/real buffers and the snapshot and resets touched (a fresh random fake text appears on next open; the user cannot see the real input, so the ✕ is the safety net)
   - The OK button reads `pwd_real`/`genre_real` (no longer the display buffer); `wipe_secrets` zeroes the whole `g_meta`, automatically covering the new real buffers
+- **"Clear list" resets sticky state**: the operation mode is already re-derived from the current list on every click (1 file = extract / 2 files = embed / 3+ files = depends on the「硬件加速」checkbox), but the「硬件加速」checkbox and the status/progress text are visible sticky state — clicking「清空列表」now also zeroes them (`hw_accel=false`, status/progress cleared) for a clean "fresh state" feel; the password `g_meta` is kept (clearing the file list does not force re-entering the password)
 - **Verification**: full regression **166/166**; a new simulated real-click check (launch img → drop a host file → sweep-click the「开始转换」area upward from the bottom) leaves the process alive with no assertion dialog; the three GUI suites (test_gui / test_gui_about / test_gui_quality) all pass.

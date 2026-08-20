@@ -721,7 +721,16 @@ static void draw_main_window(UIRuntime& rt) {
     ImGui::SameLine();
     if (ImGui::Button("下移")) move_selected(rt, false);
     ImGui::SameLine();
-    if (ImGui::Button("清空列表")) { rt.files.clear(); rt.selected.clear(); }
+    if (ImGui::Button("清空列表")) {
+        // 清空即复位：操作模式本来就是每次点击按当前列表重新判定（1 文件=提取、
+        // 2 文件=嵌入、3+ 文件看勾选），但「硬件加速」勾选和状态/进度文案是可见的
+        // 粘性状态，清空时一并归零，回到"全新状态"的直觉（密码 g_meta 保持不清）。
+        rt.files.clear();
+        rt.selected.clear();
+        rt.hw_accel = false;
+        rt.status.clear();
+        rt.progress = 0.0f;
+    }
     ImGui::SameLine();
     // 「硬件加速」= 加密/解密模式开关（勾选 = 加密嵌入：最后一个文件为合并目标，
     // 其余为宿主；不勾选 = 解密提取）。无密码时勾选无效（仍假装批量转换）。
