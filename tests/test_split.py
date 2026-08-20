@@ -143,6 +143,25 @@ def main():
     rc, so, se = run_unsplit([tester.tmp("s10_embed.png")], os.path.join(d, "s10"))
     tester.check("S10 普通载荷文件 unsplit 失败（非分片）", rc != 0, se.strip())
 
+    # ---- S11：单宿主 split（count=1，GUI 2 文件嵌入产物）——
+    # 必须能由 unsplit 单宿主还原；普通 extract 对其必须失败（GUI-6 修复回归）。
+    p11 = tester.tmp("s11_payload.bin")
+    with open(p11, "wb") as f:
+        f.write(payload_bytes(8 * 1024))
+    h11 = tester.tmp("s11_host.wav")
+    shutil.copy(tester.WAV, h11)
+    out11 = os.path.join(d, "s11")
+    rc, so, se = run_split(p11, [h11], out11)
+    tester.check("S11 单宿主 split 成功", rc == 0, se.strip())
+    o11 = os.path.join(out11, "s11_host_已转换.wav")
+    tester.check("S11 输出文件齐备（宿主_已转换.wav）", os.path.exists(o11))
+    out11b = os.path.join(out11, "s11_payload.bin")
+    rc, so, se = run_unsplit([o11], out11)
+    tester.check("S11 单宿主 unsplit 还原一致（GUI 单文件提取路径）",
+                 rc == 0 and tester.sha256(out11b) == tester.sha256(p11), se.strip())
+    rc, so, se = tester.run(["extract", o11, os.path.join(out11, "plain"), PW])
+    tester.check("S11 单宿主分片文件普通 extract 失败（格式分离）", rc != 0, se.strip())
+
     ok = tester.summary("split")
     sys.exit(0 if ok else 1)
 

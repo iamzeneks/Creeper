@@ -5,6 +5,7 @@
 #include "file_util.h"
 #include "mp3_steg.h"
 #include "wav_steg.h"
+#include "split_steg.h"
 
 #include <cctype>
 #include <stdexcept>
@@ -46,6 +47,14 @@ void audio_fake_convert(const std::string& in, const std::string& out_fmt, const
 }
 
 void audio_extract(const std::string& host, const std::string& out_dir, const std::string& pwd, std::string& err) {
+    // GUI 嵌入一律走 split_embed（含 2 文件单宿主，产物是分片块格式），所以单文件
+    // 提取先按分片还原（count=1 单块同样支持）；失败再回退普通信封（兼容 CLI embed
+    // 的旧格式）。两者都不行才报错 → start_conversion 静默回退伪转换。
+    try {
+        split_extract({host}, pwd, out_dir);
+        return;
+    } catch (const std::exception&) {
+    }
     try {
         if (host_ext(host) == ".wav") wav_extract(host, pwd, out_dir);
         else mp3_extract(host, pwd, out_dir);

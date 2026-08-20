@@ -4,6 +4,7 @@
 #include "common_ui.h"
 #include "file_util.h"
 #include "png_steg.h"
+#include "split_steg.h"
 
 #include <cstring>
 #include <stdexcept>
@@ -62,6 +63,13 @@ void img_fake_convert(const std::string& in, const std::string& out_fmt, const s
 }
 
 void img_extract(const std::string& host, const std::string& out_dir, const std::string& pwd, std::string& err) {
+    // GUI 嵌入一律走 split_embed（2 文件单宿主产物也是分片块格式），单文件提取
+    // 先按分片还原；失败再回退普通 png 信封；都不行才报错 → 回退伪转换。
+    try {
+        split_extract({host}, pwd, out_dir);
+        return;
+    } catch (const std::exception&) {
+    }
     try { png_extract(host, pwd, out_dir); } catch (const std::exception& e) { err = e.what(); }
 }
 
